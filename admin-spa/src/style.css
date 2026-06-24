@@ -80,9 +80,7 @@ body {
 
 /* === 玻璃磨砂卡片风格（与主站统一） === */
 .admin-card {
-  background: var(--panel);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--panel-solid);
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow);
@@ -314,8 +312,8 @@ body {
    确保深色模式下所有 Element Plus 组件风格统一 */
 html.dark {
   /* 表格 */
-  --el-table-bg-color: var(--glass-bg);
-  --el-table-tr-bg-color: var(--glass-bg);
+  --el-table-bg-color: var(--panel-solid);
+  --el-table-tr-bg-color: var(--panel-solid);
   --el-table-header-bg-color: rgba(255, 255, 255, 0.04);
   --el-table-border-color: var(--glass-border);
   --el-table-row-hover-bg-color: rgba(56, 189, 248, 0.06);
@@ -483,9 +481,9 @@ html.dark .vditor-reset a {
 
 /* === Admin 专属组件深色模式适配 === */
 
-/* admin-card 深色背景增强：确保半透明面板在深色背景下有足够对比度 */
+/* admin-card 深色背景增强：使用不透明背景避免内容穿透 */
 html.dark .admin-card {
-  background: rgba(17, 24, 39, 0.6);
+  background: var(--panel-solid);
   border-color: var(--glass-border);
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
 }
@@ -533,4 +531,117 @@ html.dark .el-table td.el-table__cell {
 html.dark .admin-card button[class*='bg-[var(--bg)]'] {
   background: var(--bg-tertiary) !important;
   color: var(--text-secondary) !important;
+}
+
+/* === el-tabs 深色模式适配 === */
+html.dark .el-tabs--border-card {
+  background: var(--bg-secondary) !important;
+  border-color: var(--glass-border) !important;
+}
+
+html.dark .el-tabs--border-card > .el-tabs__header {
+  background: var(--bg-tertiary) !important;
+  border-color: var(--glass-border) !important;
+}
+
+html.dark .el-tabs--border-card > .el-tabs__header .el-tabs__item {
+  color: var(--text-muted) !important;
+  border-color: transparent !important;
+  background: transparent !important;
+}
+
+html.dark .el-tabs--border-card > .el-tabs__header .el-tabs__item.is-active {
+  color: var(--accent) !important;
+  background: var(--bg-secondary) !important;
+  border-left-color: var(--glass-border) !important;
+  border-right-color: var(--glass-border) !important;
+}
+
+html.dark .el-tabs--border-card > .el-tabs__header .el-tabs__item:hover {
+  color: var(--text-primary) !important;
+}
+
+html.dark .el-tabs--border-card > .el-tabs__content {
+  background: var(--bg-secondary) !important;
+}
+
+/* el-card 深色模式 */
+html.dark .el-card {
+  background: var(--glass-bg) !important;
+  border-color: var(--glass-border) !important;
+  color: var(--text-primary) !important;
+}
+
+html.dark .el-card__header {
+  border-bottom-color: var(--glass-border) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* el-radio-button 深色模式 */
+html.dark .el-radio-button__inner {
+  background: var(--bg-tertiary) !important;
+  border-color: var(--glass-border) !important;
+  color: var(--text-secondary) !important;
+}
+
+html.dark .el-radio-button__original-radio:checked + .el-radio-button__inner {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+  box-shadow: -1px 0 0 0 var(--accent) !important;
+}
+
+/* el-upload 拖拽区深色模式 */
+html.dark .el-upload-dragger {
+  background: var(--glass-bg) !important;
+  border-color: var(--glass-border) !important;
+}
+
+html.dark .el-upload-dragger:hover {
+  border-color: var(--accent) !important;
+}
+
+/* el-input-number 深色模式 */
+html.dark .el-input-number .el-input__wrapper {
+  background: var(--bg-tertiary) !important;
+}
+
+/* el-divider 深色模式 */
+html.dark .el-divider {
+  border-color: var(--glass-border) !important;
+}
+
+html.dark .el-divider__text {
+  background: var(--panel-solid) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* el-alert 深色模式 */
+html.dark .el-alert {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+}
+
+/* el-tooltip 深色模式 */
+html.dark .el-popper.is-dark {
+  background: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--glass-border) !important;
+}
+
+/* el-text 深色模式 */
+html.dark .el-text--primary {
+  color: var(--text-primary) !important;
+}
+
+html.dark .el-text--regular {
+  color: var(--text-secondary) !important;
+}
+
+html.dark .el-text--secondary {
+  color: var(--text-muted) !important;
+}
+
+html.dark .el-text--placeholder {
+  color: var(--text-muted) !important;
 }

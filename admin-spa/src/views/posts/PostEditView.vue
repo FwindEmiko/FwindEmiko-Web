@@ -68,7 +68,7 @@ onMounted(loadPost)
 <template>
   <div v-loading="loading">
     <h2 class="admin-page-title">{{ isNew ? '新建文章' : '编辑文章' }}</h2>
-    <div class="admin-card p-4 md:p-6">
+    <div class="admin-card p-3 md:p-4">
       <PostEditor :post-id="postId" :initial="initial" @save="onSave" />
     </div>
   </div>

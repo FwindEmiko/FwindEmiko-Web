@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Trash2, GripVertical, Upload, FileCode, Save, FolderOpen } from 'lucide-vue-next'
 import Sortable from 'sortablejs'
 import { api, getAccessToken } from '@/api/client'
+import { preloadVditorIcons } from '@/utils/vditor-icons'
 import { useAuthStore } from '@/stores/auth'
 import type { ResourceDetail, ResourceVersionOut, ScreenshotOut } from '@windemiko/shared'
 
@@ -206,15 +207,18 @@ async function loadResource() {
 
 async function initVditor() {
   const Vditor = (await import('vditor')).default
+  // 预加载 Vditor 图标（避免同步 XHR 加载失败导致工具栏图标不显示）
+  const cdnBase = import.meta.env.BASE_URL + 'vditor'
+  await preloadVditorIcons(cdnBase)
   vditorInstance = new Vditor(editorId, {
     mode: 'wysiwyg',
-    height: 560,
+    height: 700,
     placeholder: '开始编写资源描述...',
     value: form.description,
     cache: { enable: false },
     // 使用国内可访问的 CDN 加载 Vditor 动态资源（mode 脚本/图标/emoji）
     // 自托管 Vditor 资源（cdn 被墙）
-    cdn: import.meta.env.BASE_URL + 'vditor',
+    cdn: cdnBase,
     toolbar: [
       'headings', 'bold', 'italic', 'strike', '|',
       'link', 'code', 'inline-code', '|',

@@ -217,9 +217,9 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div class="flex gap-4 h-[calc(100vh-12rem)]">
+    <div class="flex gap-4 flex-col md:flex-row md:h-[calc(100vh-12rem)]">
       <!-- Folder Tree -->
-      <aside class="admin-card w-56 flex-shrink-0 p-3 overflow-auto hidden md:block">
+      <aside class="admin-card w-full md:w-56 flex-shrink-0 p-3 overflow-auto md:block hidden">
         <div class="text-sm font-medium text-[var(--text-secondary)] mb-2">文件夹</div>
         <el-tree
           :data="folderTree"
@@ -273,7 +273,7 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- File Table -->
-        <div class="admin-card flex-1 p-4 overflow-hidden flex flex-col">
+        <div class="admin-card flex-1 p-4 overflow-hidden flex flex-col min-h-[300px]">
           <div class="flex items-center justify-between mb-3">
             <span class="font-medium">{{ folderName || '文件列表' }}</span>
             <el-button v-if="selectedFiles.length" type="danger" size="small" @click="batchDelete">
@@ -288,25 +288,25 @@ onBeforeUnmount(() => {
               @selection-change="(rows: FileItem[]) => (selectedFiles = rows)"
               @row-contextmenu="showContextMenu"
             >
-              <el-table-column type="selection" width="50" />
-              <el-table-column prop="filename" label="文件名" min-width="180" show-overflow-tooltip>
+              <el-table-column type="selection" width="45" />
+              <el-table-column prop="filename" label="文件名" min-width="160" show-overflow-tooltip>
                 <template #default="{ row }">
                   {{ row.display_name || row.filename }}
                 </template>
               </el-table-column>
-              <el-table-column label="大小" width="120">
+              <el-table-column label="大小" width="90">
                 <template #default="{ row }">
                   {{ formatBytes(row.file_size) }}
                 </template>
               </el-table-column>
-              <el-table-column prop="mime_type" label="类型" width="160" show-overflow-tooltip />
-              <el-table-column prop="download_count" label="下载量" width="100" />
-              <el-table-column label="创建时间" width="170">
+              <el-table-column prop="mime_type" label="类型" width="130" show-overflow-tooltip />
+              <el-table-column prop="download_count" label="下载量" width="75" />
+              <el-table-column label="创建时间" width="150" show-overflow-tooltip>
                 <template #default="{ row }">
                   {{ formatDateTime(row.created_at) }}
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="140" fixed="right">
+              <el-table-column label="操作" width="120" fixed="right">
                 <template #default="{ row }">
                   <el-button type="primary" size="small" text @click="downloadFile(row as FileItem)">下载</el-button>
                   <el-dropdown trigger="click" @command="(cmd: string) => { if (cmd === 'copy') copyFileLink(row as FileItem); if (cmd === 'delete') deleteFile(row as FileItem); }">
@@ -336,8 +336,8 @@ onBeforeUnmount(() => {
     <!-- Context Menu -->
     <div
       v-if="contextMenu.show"
-      class="fixed z-50 bg-white border border-[var(--border)] rounded-lg shadow-lg py-1 min-w-[140px]"
-      :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
+      class="fixed z-50 border rounded-lg shadow-lg py-1 min-w-[140px] context-menu-dark"
+      :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px', background: 'var(--panel-solid)', borderColor: 'var(--border)' }"
     >
       <button
         class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--accent-light)] flex items-center gap-2"
@@ -351,9 +351,9 @@ onBeforeUnmount(() => {
       >
         <Link2 class="w-4 h-4" /> 复制链接
       </button>
-      <div class="border-t border-[var(--border)] my-1" />
+      <div class="border-t my-1" style="border-color: var(--border);" />
       <button
-        class="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-50 flex items-center gap-2"
+        class="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2"
         @click="contextMenu.file && deleteFile(contextMenu.file)"
       >
         <Trash2 class="w-4 h-4" /> 删除

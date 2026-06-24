@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Menu, LogOut, User } from 'lucide-vue-next'
+import { Menu, LogOut, User, Sun, Moon } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
+import { useTheme } from '@/composables/useTheme'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const app = useAppStore()
+const { currentTheme, toggleTheme } = useTheme()
 
 const breadcrumbs = computed(() => {
   const items = [{ title: '首页', path: '/' }]
@@ -45,6 +47,16 @@ function logout() {
     </div>
 
     <div class="flex items-center gap-3">
+      <!-- 主题切换按钮 -->
+      <button
+        class="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors"
+        :title="currentTheme === 'dark' ? '切换到浅色模式' : '切换到深色模式'"
+        @click="toggleTheme"
+      >
+        <Sun v-if="currentTheme === 'dark'" class="w-5 h-5" />
+        <Moon v-else class="w-5 h-5" />
+      </button>
+
       <span class="text-xs text-[var(--text-secondary)] hidden sm:inline">
         {{ auth.user?.display_name || auth.user?.username }}
         <el-tag size="small" class="ml-2">{{ auth.user?.role }}</el-tag>

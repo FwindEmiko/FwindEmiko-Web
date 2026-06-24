@@ -23,6 +23,8 @@ function onSaved(id: number) {
 <template>
   <div>
     <h2 class="admin-page-title">{{ isNew ? '新建资源' : '编辑资源' }}</h2>
-    <ResourceEditor :resource-id="resourceId" @saved="onSaved" />
+    <div class="admin-card p-3 md:p-4">
+      <ResourceEditor :resource-id="resourceId" @saved="onSaved" />
+    </div>
   </div>
 </template>

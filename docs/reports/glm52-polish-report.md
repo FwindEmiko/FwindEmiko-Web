@@ -799,3 +799,101 @@ curl -s -X POST http://dev.miragedge.top:4174/api/auth/login \
 - ✅ Alembic 迁移含旧数据迁移逻辑
 - ✅ 详情页 hover 效果移除仅作用于内容面板，卡片列表保留轻量 hover
 - ✅ 所有改动通过 `pnpm build` 验证
+
+---
+
+## 批次6：Vditor 资源补全 + Admin 深色模式全面适配
+
+> 时间：2026-06-25
+> 范围：admin-spa 编辑器图标修复、深色模式全覆盖、主题切换按钮、文件管理响应式
+
+### 一、Vditor 编辑器工具栏图标修复（P0）
+
+**问题**：两个编辑器（PostEditor / ResourceEditor）工具栏图标不显示。
+
+**根因**：Vditor 内部使用同步 XHR（`addScriptSync`）加载 `material.js` 图标脚本，在某些环境下可能加载失败，导致 SVG sprite 未注入 DOM。
+
+**修复**：
+- 新建 [admin-spa/src/utils/vditor-icons.ts](file:///f:/FCelestial/fwe-repo/admin-spa/src/utils/vditor-icons.ts)：`preloadVditorIcons()` 使用 `fetch` 异步预加载 `material.js`，将脚本内容注入 `<head>`，Vditor 内部检测到 `vditorIconScript` 已存在会跳过重复加载。
+- [PostEditor.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/components/editors/PostEditor.vue#L125-L129)：`initVditor()` 中先调用 `await preloadVditorIcons(cdnBase)` 再初始化 Vditor。
+- [ResourceEditor.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/components/editors/ResourceEditor.vue#L208-L212)：同上。
+
+### 二、编辑器高度与宽度优化（P1）
+
+**问题**：`/admin/#/posts/new` 编辑器宽度太窄、高度不够。
+
+**修复**：
+- [PostEditor.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/components/editors/PostEditor.vue#L132)：`height: 560` → `height: 700`。
+- [ResourceEditor.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/components/editors/ResourceEditor.vue#L215)：同上。
+- [PostEditView.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/views/posts/PostEditView.vue#L71)：`admin-card p-4 md:p-6` → `admin-card p-3 md:p-4`，减小外层 padding 让编辑器更宽。
+- [ResourceEditView.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/views/resources/ResourceEditView.vue#L26)：给 ResourceEditor 添加 `admin-card p-3 md:p-4` 包裹（此前无卡片容器）。
+
+### 三、Admin 深色模式全面适配（P0）
+
+**问题**：`/admin/#/resources/new` 深色适配不完整，Element Plus 组件（tabs、radio、upload、card 等）未跟随深色模式。
+
+**修复**：[admin-spa/src/style.css](file:///f:/FCelestial/fwe-repo/admin-spa/src/style.css) 追加深色覆盖：
+
+| 组件 | 覆盖内容 |
+|------|----------|
+| el-tabs（border-card） | header 背景、item 文字色、active 项 accent 色 + 内容区背景 |
+| el-card | 背景 + 边框 + header 分割线 |
+| el-radio-button | 未选中背景/文字色 + 选中 accent 色 |
+| el-upload-dragger | 拖拽区背景 + hover 边框 |
+| el-input-number | 输入框背景 |
+| el-divider | 分割线 + 文字背景 |
+| el-alert | 背景 + 边框 |
+| el-popper（tooltip） | 深色背景 + 文字色 |
+| el-text | primary/regular/secondary/placeholder 文字色 |
+| el-table | bg/tr/header 背景改为 `--panel-solid`（不透明，解决穿透问题） |
+
+### 四、admin-card 不透明背景修复（P1）
+
+**问题**：文件列表长度不够时，半透明 admin-card 导致底下内容穿透。
+
+**根因**：`--panel: rgba(17, 24, 39, 0.6)` 为 60% 半透明，配合 `backdrop-filter: blur(12px)` 在内容稀疏区域会穿透。
+
+**修复**：
+- [style.css](file:///f:/FCelestial/fwe-repo/admin-spa/src/style.css#L82-L87)：`.admin-card` 背景从 `var(--panel)` 改为 `var(--panel-solid)`，移除 `backdrop-filter`，确保完全不透明。
+- `html.dark .admin-card` 同步改为 `var(--panel-solid)`。
+
+### 五、Admin 主题切换按钮（P1）
+
+**问题**：管理后台没有切换深色/浅色模式的按钮。
+
+**修复**：
+- 新建 [admin-spa/src/composables/useTheme.ts](file:///f:/FCelestial/fwe-repo/admin-spa/src/composables/useTheme.ts)：
+  - `currentTheme` 响应式 ref
+  - `toggleTheme()` 切换主题并写入 cookie（`path=/;SameSite=Lax`，与主站共享）
+  - `initTheme()` 从 cookie 读取初始主题
+- [main.ts](file:///f:/FCelestial/fwe-repo/admin-spa/src/main.ts#L15-L19)：移除旧的 `setInterval` 轮询 cookie 逻辑，改用 `initTheme()` 一次性初始化。
+- [AdminHeader.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/components/layout/AdminHeader.vue#L50-L58)：添加 Sun/Moon 图标切换按钮，深色模式显示 Sun（点击切到浅色），浅色模式显示 Moon。
+
+### 六、FileManagerView 响应式 + 透明修复（P1）
+
+**问题**：`/admin/#/files` 文件列表对不同分辨率适配不足，不该透明的地方会变透明。
+
+**修复**：[FileManagerView.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/views/FileManagerView.vue)
+
+| 改动 | 说明 |
+|------|------|
+| 布局改为 `flex-col md:flex-row` | 移动端纵向堆叠，桌面端横向排列 |
+| 文件树 `w-full md:w-56` | 移动端全宽，桌面端固定 224px |
+| 文件列表 `min-h-[300px]` | 确保最小高度，避免内容太少时穿透 |
+| 表格列宽缩减 | selection 50→45, 文件名 180→160, 大小 120→90, 类型 160→130, 下载量 100→75, 创建时间 170→150, 操作 140→120 |
+| 创建时间列添加 `show-overflow-tooltip` | 防止窄屏截断 |
+| 右键菜单改用 `var(--panel-solid)` | 不透明背景，深色模式适配 |
+| 删除按钮 hover 添加 `dark:hover:bg-red-500/10` | 深色模式 hover 效果 |
+
+### 验证结果
+
+| 验证项 | 状态 |
+|--------|------|
+| `pnpm --filter admin-spa build` | ✅ 14.36s 成功 |
+| Vditor 工具栏图标预加载 | ✅ `preloadVditorIcons()` fetch 异步加载 |
+| 编辑器高度 700px | ✅ PostEditor + ResourceEditor |
+| el-tabs/radio/upload/card 深色覆盖 | ✅ style.css 追加 |
+| admin-card 不透明背景 | ✅ `--panel-solid` |
+| 主题切换按钮 | ✅ AdminHeader Sun/Moon |
+| 文件管理响应式 | ✅ flex-col md:flex-row + 列宽缩减 |
+| 右键菜单深色适配 | ✅ `--panel-solid` 背景 |
