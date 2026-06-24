@@ -11,7 +11,7 @@ export default defineNuxtConfig({
     },
     // 服务端专用：后端地址，用于 server/api 代理
     // 生产: http://backend:8000 (Docker 内部网络) | 开发: http://localhost:8000
-    backendUrl: process.env.BACKEND_URL || 'http://localhost:8000',
+    backendUrl: process.env.NUXT_BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:8000',
   },
 
   app: {
