@@ -34,8 +34,9 @@ export default defineNuxtConfig({
       script: [
         { src: '/live2d/live2dcubismcore.min.js', defer: false },
         // SSR theme injection to prevent FOUC (P2)
+        // 移动端兼容：读取 cookie 并在 HTML 渲染前应用主题 class
         {
-          innerHTML: `(function(){try{var c=document.cookie.match(/theme=([^;]+)/);var t=c?c[1]:'dark';var cl=document.documentElement.classList;t==='dark'?cl.add('dark'):cl.add('light');}catch(e){document.documentElement.classList.add('dark');}})()`,
+          innerHTML: `(function(){try{var c=document.cookie.match(/theme=([^;]+)/);var t=c?decodeURIComponent(c[1]):'dark';var cl=document.documentElement.classList;cl.remove('dark','light');if(t==='light'){cl.add('light');}else{cl.add('dark');}}catch(e){document.documentElement.classList.add('dark');}})()`,
           type: 'text/javascript',
           tagPosition: 'head',
         },

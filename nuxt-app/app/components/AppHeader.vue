@@ -57,21 +57,12 @@
             <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
           </button>
 
-          <!-- Admin entry -->
-          <a
-            v-if="auth.isLoggedIn && auth.user?.role === 'admin'"
-            href="/admin/"
-            target="_blank"
-            rel="noopener"
-            class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-[var(--accent)]/40 text-[var(--accent)] bg-[var(--accent)]/5 hover:bg-[var(--accent)]/15 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
-            管理后台
-          </a>
-
-          <!-- Auth -->
-          <template v-if="auth.isLoggedIn && auth.user">
-            <NuxtLink to="/profile" class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-glass-hover transition-colors">
+          <!-- User dropdown (logged in) -->
+          <div v-if="auth.isLoggedIn && auth.user" class="relative">
+            <button
+              class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-glass-hover transition-colors"
+              @click="userMenuOpen = !userMenuOpen"
+            >
               <img
                 v-if="auth.user.avatar_url"
                 :src="resolveUploadUrl(auth.user.avatar_url)"
@@ -81,9 +72,52 @@
               <div v-else class="w-7 h-7 rounded-full bg-[var(--accent)]/20 flex items-center justify-center text-[var(--accent)] text-xs font-bold">
                 {{ auth.user.username.slice(0, 1).toUpperCase() }}
               </div>
-              <span class="hidden sm:block text-sm text-[var(--text-secondary)]">{{ auth.user.display_name || auth.user.username }}</span>
-            </NuxtLink>
-          </template>
+              <span class="hidden sm:block text-sm text-[var(--text-secondary)] max-w-[100px] truncate">{{ auth.user.display_name || auth.user.username }}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden sm:block text-[var(--text-muted)] transition-transform" :class="{ 'rotate-180': userMenuOpen }"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+
+            <!-- Dropdown menu -->
+            <Transition name="user-menu">
+              <div
+                v-if="userMenuOpen"
+                ref="userMenuRef"
+                class="absolute right-0 top-full mt-2 w-48 rounded-xl glass-panel border border-glass-border shadow-glass overflow-hidden"
+              >
+                <!-- 管理后台（仅 admin） -->
+                <a
+                  v-if="auth.user.role === 'admin'"
+                  href="/admin/"
+                  target="_blank"
+                  rel="noopener"
+                  class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-glass-hover transition-colors"
+                  @click="userMenuOpen = false"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+                  管理后台
+                </a>
+                <!-- 个人设置 -->
+                <NuxtLink
+                  to="/profile"
+                  class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-glass-hover transition-colors"
+                  @click="userMenuOpen = false"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  个人设置
+                </NuxtLink>
+                <div class="border-t border-glass-border"></div>
+                <!-- 退出登录 -->
+                <button
+                  class="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors"
+                  @click="handleLogout"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                  退出登录
+                </button>
+              </div>
+            </Transition>
+          </div>
+
+          <!-- Login button (not logged in) -->
           <NuxtLink
             v-else
             to="/login"
@@ -106,14 +140,14 @@
 
     <!-- Mobile drawer -->
     <Transition name="mobile-menu">
-      <div v-if="mobileMenuOpen" class="md:hidden absolute top-14 left-0 right-0 glass-panel border-t border-glass-border">
+      <div v-if="mobileMenuOpen" class="md:hidden absolute top-14 left-0 right-0 bg-[var(--bg-primary)]/95 backdrop-blur-glass border-t border-glass-border shadow-lg">
         <nav class="px-4 py-3 space-y-1">
           <NuxtLink
             v-for="item in navItems"
             :key="item.path"
             :to="item.path"
-            class="block px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-            :class="route.path === item.path || route.path.startsWith(item.path + '/') ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-glass-hover'"
+            class="block px-3 py-2 rounded-lg text-sm font-medium transition-colors text-[var(--text-primary)]"
+            :class="route.path === item.path || route.path.startsWith(item.path + '/') ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'hover:bg-glass-hover'"
             @click="mobileMenuOpen = false"
           >
             {{ item.label }}
@@ -153,14 +187,14 @@
               </a>
               <NuxtLink
                 to="/profile"
-                class="block px-3 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                class="block px-3 py-2 text-sm text-[var(--text-primary)] hover:text-[var(--accent)]"
                 @click="mobileMenuOpen = false"
               >
-                个人中心
+                个人设置
               </NuxtLink>
               <button
                 class="block w-full text-left px-3 py-2 text-sm text-[var(--danger)]"
-                @click="() => { auth.logout(); mobileMenuOpen = false }"
+                @click="handleLogout"
               >
                 退出登录
               </button>
@@ -175,15 +209,18 @@
 <script setup lang="ts">
 import { resolveUploadUrl } from '@windemiko/shared'
 import { useAuthStore } from '~~/stores/auth'
+import { onClickOutside } from '@vueuse/core'
 
 const route = useRoute()
 const auth = useAuthStore()
 const { isDark, toggle: toggleTheme } = useTheme()
 
 const mobileMenuOpen = ref(false)
+const userMenuOpen = ref(false)
 const searchOpen = ref(false)
 const searchQuery = ref('')
 const scrolled = ref(false)
+const userMenuRef = ref<HTMLElement | null>(null)
 
 const navItems = [
   { label: '首页', path: '/' },
@@ -191,6 +228,17 @@ const navItems = [
   { label: '资源', path: '/resources' },
   { label: '下载', path: '/download' },
 ]
+
+// 点击外部关闭用户下拉菜单
+onClickOutside(userMenuRef, () => {
+  userMenuOpen.value = false
+})
+
+function handleLogout() {
+  auth.logout()
+  userMenuOpen.value = false
+  mobileMenuOpen.value = false
+}
 
 function handleSearch() {
   if (!searchQuery.value.trim()) return
@@ -215,6 +263,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 移动端菜单过渡 */
 .mobile-menu-enter-active,
 .mobile-menu-leave-active {
   transition: all 0.2s ease;
@@ -223,5 +272,16 @@ onUnmounted(() => {
 .mobile-menu-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+/* 用户下拉菜单过渡 */
+.user-menu-enter-active,
+.user-menu-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.user-menu-enter-from,
+.user-menu-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 </style>

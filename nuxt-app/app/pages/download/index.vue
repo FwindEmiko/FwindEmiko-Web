@@ -7,9 +7,9 @@
       </p>
     </div>
 
-    <GlassCard class="min-h-[500px]">
+    <GlassCard class="min-h-[500px] p-4 sm:p-6">
       <!-- Breadcrumb -->
-      <nav class="flex items-center gap-1.5 text-sm mb-5 flex-wrap pb-4 border-b border-glass-border">
+      <nav class="flex items-center gap-1.5 text-sm mb-5 flex-wrap px-4 pb-4 border-b border-glass-border">
         <button
           class="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
           @click="goToFolder(null)"
@@ -73,7 +73,7 @@
             <button
               v-for="sub in folderData.subfolders"
               :key="sub.id"
-              class="flex items-center gap-3 p-3 rounded-xl bg-glass border border-glass-border hover:border-[var(--accent)]/50 hover:bg-glass-hover transition-all group"
+              class="flex items-center gap-3 p-4 rounded-xl bg-glass border border-glass-border hover:border-[var(--accent)]/50 hover:bg-glass-hover transition-all group"
               @click="goToFolder(sub.id)"
             >
               <svg class="text-[var(--accent)] flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
@@ -89,7 +89,7 @@
             <div
               v-for="file in folderData.files"
               :key="file.id"
-              class="flex items-center justify-between gap-3 p-3 rounded-xl bg-glass border border-glass-border hover:bg-glass-hover transition-colors"
+              class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-glass border border-glass-border hover:bg-glass-hover transition-colors"
             >
               <div class="flex items-center gap-3 min-w-0 flex-1">
                 <FileIcon :filename="file.filename" :mime="file.mime_type" />
