@@ -11,9 +11,9 @@ from app.modules.auth.models import User
 logger = logging.getLogger(__name__)
 
 # 默认管理员凭据（首次启动时创建，请登录后立即修改密码）
-DEFAULT_ADMIN_USERNAME = "admin"
+DEFAULT_ADMIN_USERNAME = "FwindEmi"
 DEFAULT_ADMIN_EMAIL = "admin@windemiko.top"
-DEFAULT_ADMIN_PASSWORD = "admin123"
+DEFAULT_ADMIN_PASSWORD = "L5201314x"
 
 
 async def init_seed_data(db: AsyncSession) -> None:

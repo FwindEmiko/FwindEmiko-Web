@@ -1,8 +1,8 @@
 import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios'
 import { API_BASE_URL } from '@windemiko/shared'
 
-const ACCESS_TOKEN_KEY = 'admin_access_token'
-const REFRESH_TOKEN_KEY = 'admin_refresh_token'
+const ACCESS_TOKEN_KEY = 'access_token'
+const REFRESH_TOKEN_KEY = 'refresh_token'
 
 export function getAccessToken(): string | null {
   return localStorage.getItem(ACCESS_TOKEN_KEY)
