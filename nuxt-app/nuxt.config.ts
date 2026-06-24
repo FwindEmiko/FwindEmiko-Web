@@ -125,7 +125,7 @@ export default defineNuxtConfig({
 
   nitro: {
     routeRules: {
-      '/': { prerender: true },
+      '/': { ssr: true },
       '/blog/**': { isr: 3600 },
       '/resources/**': { isr: 86400 },
       '/download/**': { ssr: true },

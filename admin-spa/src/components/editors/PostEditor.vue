@@ -378,7 +378,6 @@ watch(
       <div class="flex gap-3 sticky bottom-0 backdrop-blur-xl py-3 z-10 px-4 -mx-4 border-t border-[var(--border)]" style="background: var(--panel);">
         <el-button @click="submit('draft')">存草稿</el-button>
         <el-button type="primary" @click="submit('published')">发布</el-button>
-        <el-button text @click="saveDraft">保存本地草稿</el-button>
       </div>
     </el-form>
 

@@ -147,15 +147,43 @@ const currentFolderId = computed<number | null>(() => {
   return Number.isFinite(id) && id > 0 ? id : null
 })
 
-const { data: folders, pending: treePending } = await useAsyncData('download-folders', () => downloadApi.listFolders())
+// SSR 失败时返回空数组，避免 data 为 null 导致客户端不重新获取
+const { data: folders, pending: treePending, refresh: refreshFolders } = await useAsyncData('download-folders', async () => {
+  try {
+    return await downloadApi.listFolders()
+  } catch {
+    return [] as FolderTreeNode[]
+  }
+})
+
+// 客户端 hydration 后，如果 SSR 数据为空则重新获取（SSR 可能因 baseURL/网络问题失败）
+onMounted(() => {
+  if (!folders.value || folders.value.length === 0) {
+    refreshFolders()
+  }
+})
 
 const rootFolders = computed(() => folders.value || [])
 
-const { data: folderData, pending: filesPending } = await useAsyncData(
+const { data: folderData, pending: filesPending, refresh: refreshFolderData } = await useAsyncData(
   () => `folder-files-${currentFolderId.value}`,
-  () => currentFolderId.value ? downloadApi.listFolderFiles(currentFolderId.value) : null,
+  async () => {
+    if (!currentFolderId.value) return null
+    try {
+      return await downloadApi.listFolderFiles(currentFolderId.value)
+    } catch {
+      return null
+    }
+  },
   { watch: [currentFolderId] },
 )
+
+// 客户端 hydration 后，如果当前有 folderId 但 SSR 数据为空则重新获取
+onMounted(() => {
+  if (currentFolderId.value && !folderData.value) {
+    refreshFolderData()
+  }
+})
 
 const breadcrumbs = computed(() => folderData.value?.breadcrumbs || [])
 

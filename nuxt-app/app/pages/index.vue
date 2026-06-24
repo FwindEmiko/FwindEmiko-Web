@@ -139,8 +139,28 @@ useSeoMeta({
   description: '狐风轩汐の小屋 - 代码、游戏、创作，分享技术与生活的碎片。',
 })
 
-const { data: posts, pending } = await useAsyncData('home-posts', () => blogApi.listPosts({ page: 1, size: 6 }))
-const { data: resources, pending: resourcesPending } = await useAsyncData('home-resources', () => resourceApi.listResources({ page: 1, size: 6, sort: 'downloads' }))
+// SSR 失败时返回空列表，避免 data 为 null 导致客户端不重新获取
+const { data: posts, pending, refresh: refreshPosts } = await useAsyncData('home-posts', async () => {
+  try {
+    return await blogApi.listPosts({ page: 1, size: 6 })
+  } catch {
+    return { items: [], total: 0 }
+  }
+})
+
+const { data: resources, pending: resourcesPending, refresh: refreshResources } = await useAsyncData('home-resources', async () => {
+  try {
+    return await resourceApi.listResources({ page: 1, size: 6, sort: 'downloads' })
+  } catch {
+    return { items: [], total: 0 }
+  }
+})
+
+// 客户端 hydration 后，如果 SSR 数据为空则重新获取
+onMounted(() => {
+  if (!posts.value?.items?.length) refreshPosts()
+  if (!resources.value?.items?.length) refreshResources()
+})
 
 // Twinkling stars for Hero background
 const stars = Array.from({ length: 24 }, (_, i) => ({
