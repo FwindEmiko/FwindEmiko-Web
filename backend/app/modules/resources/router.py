@@ -296,13 +296,16 @@ async def delete_version(
     return success(None)
 
 
-@router.post("/resources/{resource_id}/versions/{version_id}/download")
+@router.get("/resources/{resource_id}/versions/{version_id}/download")
 async def download_version(
     resource_id: int,
     version_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    """下载计数 + 重定向到实际下载地址"""
+    """下载计数 + 重定向到实际下载地址
+
+    使用 GET 以便通过 <a href> 链接直接触发（浏览器/网盘外链跳转）。
+    """
     result = await db.execute(
         select(ResourceVersion).where(
             ResourceVersion.id == version_id, ResourceVersion.resource_id == resource_id
