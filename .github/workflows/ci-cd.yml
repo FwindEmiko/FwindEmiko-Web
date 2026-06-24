@@ -7,72 +7,138 @@ on:
     branches: [main]
 
 concurrency:
-  group: deploy
-  cancel-in-progress: false
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  NODE_VERSION: 22.x
+  PNPM_VERSION: 9
 
 jobs:
-  test:
+  # ============================================================
+  # 代码检查
+  # ============================================================
+  lint:
+    name: 代码质量检查
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v2
         with:
-          version: 9
+          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Type check
+          node-version: ${{ env.NODE_VERSION }}
+      - run: pnpm install
+      - name: 类型检查
         run: pnpm run typecheck || echo '[WARN] typecheck not configured'
       - name: Lint
         run: pnpm run lint || echo '[WARN] lint not configured'
-      - name: Build
-        run: pnpm build
-      - name: Test
-        run: pnpm test || echo '[WARN] no tests yet'
 
-  deploy:
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  # ============================================================
+  # 构建测试 + 打包
+  # ============================================================
+  build:
+    name: 构建 & 打包
     runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v2
         with:
-          version: 9
+          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: 'pnpm'
-      - name: Install & Build
+          node-version: ${{ env.NODE_VERSION }}
+
+      - run: pnpm install
+      - name: 构建
+        run: pnpm build
+
+      - name: 打包部署文件
+        if: github.event_name == 'push'
         run: |
-          pnpm install --frozen-lockfile
-          pnpm build
-      - name: Setup WireGuard VPN
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq wireguard-tools
-          echo "${{ secrets.WG_CLIENT_CONFIG }}" | sudo tee /etc/wireguard/github-actions.conf > /dev/null
-          sudo wg-quick up github-actions
-          sudo wg show
-      - name: Deploy to ECS
-        uses: appleboy/ssh-action@v1
+          # 前端构建产物
+          tar -czf fwe-deploy.tar.gz \
+            nuxt-app/.output \
+            admin-spa/dist \
+            backend \
+            packages \
+            Dockerfile.backend \
+            Dockerfile.frontend \
+            admin-nginx.conf \
+            .dockerignore \
+            docker-compose.prod.yml \
+            package.json \
+            pnpm-workspace.yaml \
+            pnpm-lock.yaml
+
+          echo "📦 部署包大小: $(du -sh fwe-deploy.tar.gz | cut -f1)"
+
+      - name: 上传构建产物
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
+          name: fwe-deploy
+          path: fwe-deploy.tar.gz
+          retention-days: 3
+
+  # ============================================================
+  # 部署到服务器
+  # ============================================================
+  deploy:
+    name: 部署
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 60
+    steps:
+      - name: 下载构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: fwe-deploy
+
+      - name: 配置 SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 部署到服务器
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 20.20.20.1 >> ~/.ssh/known_hosts 2>/dev/null
+
+          echo "=== 上传部署包 ==="
+          scp -o ConnectTimeout=60 fwe-deploy.tar.gz root@20.20.20.1:/tmp/
+
+          echo "=== 服务器端解压 & 重建 ==="
+          ssh -o ConnectTimeout=60 root@20.20.20.1 << 'ENDSSH'
             set -e
             cd /opt/fwindemiko-web
-            echo "=== Pulling latest code ==="
-            git pull origin main
-            echo "=== Building & starting containers ==="
+
+            # 备份旧的 .env（如果在项目目录里）
+            cp .env /tmp/fwe-env-backup 2>/dev/null || true
+
+            # 解压覆盖
+            tar -xzf /tmp/fwe-deploy.tar.gz -C /opt/fwindemiko-web/
+            rm /tmp/fwe-deploy.tar.gz
+
+            # 恢复 .env
+            cp /tmp/fwe-env-backup /opt/fwindemiko-web/.env 2>/dev/null || true
+
+            # 重建容器
             docker-compose -f docker-compose.prod.yml up -d --build
-            echo "=== Cleanup old images ==="
+
+            # 清理旧镜像
             docker image prune -f
-            echo "=== Status ==="
+
+            echo "✅ 部署完成"
             docker-compose -f docker-compose.prod.yml ps
-      - name: Teardown WireGuard
-        if: always()
-        run: sudo wg-quick down github-actions 2>/dev/null || true
+          ENDSSH
