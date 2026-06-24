@@ -5,35 +5,10 @@
 #   4173 → 前端 (Nuxt SSR)
 #   4174 → 后端 (FastAPI)
 #   4175 → 管理后台 (Nginx SPA)
-#   DB 不暴露宿主机端口，仅容器间通信
+#   DB 复用现有 mariadb:10.11 容器（miragedge-network）
 # ============================================================
 
 services:
-  db:
-    image: mariadb:10.11
-    container_name: fwe-db
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: 
-      MYSQL_DATABASE: windemiko
-      MYSQL_USER: windemiko
-      MYSQL_PASSWORD: 
-      MYSQL_CHARSET: utf8mb4
-      MYSQL_COLLATION: utf8mb4_unicode_ci
-    command: >
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
-      --default-authentication-plugin=mysql_native_password
-    volumes:
-      - fwe_db:/var/lib/mysql
-    networks:
-      - fwe-prod
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   backend:
     build:
       context: .
@@ -43,14 +18,12 @@ services:
     ports:
       - "4174:8000"
     env_file:
-      - .env.prod
+      - .env
     volumes:
       - fwe_uploads:/app/uploads
     networks:
       - fwe-prod
-    depends_on:
-      db:
-        condition: service_healthy
+      - miragedge-network
 
   frontend:
     build:
@@ -83,9 +56,10 @@ services:
       - backend
 
 volumes:
-  fwe_db:
   fwe_uploads:
 
 networks:
   fwe-prod:
     driver: bridge
+  miragedge-network:
+    external: true
