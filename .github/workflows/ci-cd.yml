@@ -138,12 +138,12 @@ jobs:
             find . -mindepth 1 -maxdepth 1 -not -name '.env' -exec rm -rf {} + 2>/dev/null || true
             tar -xzf /tmp/fwe-deploy.tar.gz
             rm /tmp/fwe-deploy.tar.gz
+            # 必须先删除 admin 容器再 up，否则 Docker 复用旧容器不重新挂载 volume → 403
+            docker rm -f fwe-admin 2>/dev/null || true
             docker-compose -f docker-compose.prod.yml up -d --build
-            # 运行数据库迁移（新增字段等增量变更）
+            # 运行数据库迁移
             sleep 8
-            docker-compose -f docker-compose.prod.yml exec -T backend alembic upgrade head 2>&1 || echo '[WARN] migration skipped (may already be up to date)'
-            # admin 容器可能在 volume 挂载完成前就启动，导致 403；重建确保 dist 已就绪
-            docker-compose -f docker-compose.prod.yml up -d --force-recreate admin
+            docker-compose -f docker-compose.prod.yml exec -T backend alembic upgrade head 2>&1 || echo '[WARN] migration skipped'
             docker image prune -f
             echo "✅ 部署完成"
             docker-compose -f docker-compose.prod.yml ps
