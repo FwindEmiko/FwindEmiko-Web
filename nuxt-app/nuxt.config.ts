@@ -128,7 +128,9 @@ export default defineNuxtConfig({
       '/': { ssr: true },
       '/blog/**': { isr: 3600 },
       '/resources/**': { isr: 86400 },
-      '/download/**': { ssr: true },
+      // 下载页面需要认证 token 才能访问会员文件夹，SSR 时无 token 会导致数据缺失
+      // 改为纯客户端渲染，所有请求带 token，避免刷新后数据消失
+      '/download/**': { ssr: false },
       '/login': { ssr: false },
       '/register': { ssr: false },
       '/profile': { ssr: false },
