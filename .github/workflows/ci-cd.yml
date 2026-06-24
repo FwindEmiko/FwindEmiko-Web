@@ -8,15 +8,16 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: read
   actions: read
 
 env:
   NODE_VERSION: 22.x
-  PNPM_VERSION: 9
+  PNPM_VERSION: 10.15.0
 
 jobs:
   # ============================================================
-  # 代码检查
+  # 代码质量检查
   # ============================================================
   lint:
     name: 代码质量检查
@@ -24,28 +25,35 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v2
         with:
           version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+
       - run: pnpm install
       - name: 类型检查
-        run: pnpm run typecheck || echo '[WARN] typecheck not configured'
+        run: pnpm run typecheck
+        continue-on-error: false
       - name: Lint
-        run: pnpm run lint || echo '[WARN] lint not configured'
+        run: pnpm run lint
+        continue-on-error: false
 
   # ============================================================
-  # 构建 + 打包
+  # 构建测试 + 打包
   # ============================================================
-  build:
-    name: 构建 & 打包
+  test:
+    name: 构建测试
     runs-on: ubuntu-latest
     needs: lint
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v2
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -56,8 +64,14 @@ jobs:
       - run: pnpm install
       - name: 构建
         run: pnpm build
+      - name: 检查构建产物大小
+        run: |
+          OUTPUT_SIZE=$(du -sh nuxt-app/.output | cut -f1)
+          ADMIN_SIZE=$(du -sh admin-spa/dist | cut -f1)
+          echo "📦 前端: $OUTPUT_SIZE, Admin: $ADMIN_SIZE"
+          echo "## 构建产物大小: 前端 $OUTPUT_SIZE, Admin $ADMIN_SIZE" >> $GITHUB_STEP_SUMMARY
 
-      - name: 打包部署文件
+      - name: 打包
         if: github.event_name == 'push'
         run: |
           tar -czf fwe-deploy.tar.gz \
@@ -84,12 +98,12 @@ jobs:
           retention-days: 3
 
   # ============================================================
-  # 部署到服务器
+  # 部署
   # ============================================================
   deploy:
     name: 部署
     runs-on: ubuntu-latest
-    needs: build
+    needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     timeout-minutes: 60
     steps:
@@ -97,6 +111,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: fwe-deploy
+          path: ./
 
       - name: 配置 SSH
         uses: webfactory/ssh-agent@v0.9.0
@@ -110,7 +125,7 @@ jobs:
           sudo wg-quick up github-actions
           sudo wg show
 
-      - name: 部署到服务器
+      - name: 远程部署
         run: |
           set -e
           mkdir -p ~/.ssh
