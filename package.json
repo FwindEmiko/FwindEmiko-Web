@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter nuxt-app dev",
-    "build": "pnpm --filter nuxt-app build",
+    "build": "pnpm --filter nuxt-app build && pnpm --filter admin-spa build",
     "generate": "pnpm --filter nuxt-app generate"
   },
   "devDependencies": {
