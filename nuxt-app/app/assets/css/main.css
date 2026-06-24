@@ -88,9 +88,15 @@ body {
     0 4px 8px -2px rgba(0, 0, 0, 0.15);
 }
 
-/* ===== 下拉框 / 搜索框统一样式 ===== */
+/* 详情页正文面板：禁用 hover 上浮效果，只保留 backdrop-blur 背景 */
+/* 用于博客详情、资源详情等内容区，避免花里胡哨的悬浮动画 */
+.no-hover-lift,
+.no-hover-lift:hover {
+  transform: none !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1) !important;
+}
 
-/* select 元素基础样式：玻璃面板 + 深色边框 */
+/* select 元素配色修复：确保可读 */
 select {
   background-color: var(--bg-secondary);
   color: var(--text-primary);

@@ -224,6 +224,8 @@ async def create_version(
         changelog=payload.changelog,
         file_url=payload.file_url,
         external_url=payload.external_url,
+        download_type=payload.download_type,
+        external_label=payload.external_label,
         file_size=payload.file_size,
         file_hash=payload.file_hash,
         is_prerelease=payload.is_prerelease,
@@ -257,6 +259,8 @@ async def update_version(
         "changelog",
         "file_url",
         "external_url",
+        "download_type",
+        "external_label",
         "file_size",
         "file_hash",
         "is_prerelease",
@@ -315,14 +319,19 @@ async def download_version(
     resource.updated_at = datetime.now(timezone.utc)
     await db.commit()
 
-    if version.external_url:
+    # 根据 download_type 决定跳转地址
+    # external → 外链网盘 URL
+    # local → 本站 file_url
+    redirect_url = None
+    if version.download_type == "external" and version.external_url:
+        redirect_url = version.external_url
+    elif version.file_url:
+        redirect_url = version.file_url
+
+    if redirect_url:
         from fastapi.responses import RedirectResponse
 
-        return RedirectResponse(version.external_url)
-    if version.file_url:
-        from fastapi.responses import RedirectResponse
-
-        return RedirectResponse(version.file_url)
+        return RedirectResponse(redirect_url)
 
     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="无可用的下载地址")
 
@@ -410,3 +419,67 @@ async def delete_screenshot(
     await db.delete(screenshot)
     await db.commit()
     return success(None)
+
+
+# === resource-pack 兼容配置（占位接口） ===
+
+
+@router.get("/resources/{slug}/pack.yml")
+async def get_pack_yml(slug: str, db: AsyncSession = Depends(get_db)):
+    """生成 resource-pack 兼容的 YAML 配置
+
+    根据资源的 versions 数据自动生成，供第三方启动器/整合包工具消费。
+    格式参考 resource-pack 配置规范，当前为占位实现。
+    """
+    result = await db.execute(
+        select(Resource)
+        .options(selectinload(Resource.versions))
+        .where(Resource.slug == slug, Resource.status == "published")
+    )
+    resource = result.scalar_one_or_none()
+    if resource is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="资源不存在")
+
+    versions = sorted(resource.versions, key=lambda v: v.created_at, reverse=True)
+
+    # 构造 YAML（手工拼接，避免引入 PyYAML 依赖）
+    lines: list[str] = []
+    lines.append(f"# Auto-generated pack.yml for {resource.title}")
+    lines.append(f"resource-pack:")
+    lines.append(f"  name: {resource.title}")
+    lines.append(f"  slug: {resource.slug}")
+    lines.append(f"  type: {resource.type}")
+    if resource.game_versions:
+        import json as _json
+
+        try:
+            gv = _json.loads(resource.game_versions) if isinstance(resource.game_versions, str) else resource.game_versions
+            if gv:
+                lines.append(f"  game-versions: {', '.join(gv)}")
+        except Exception:
+            pass
+    lines.append("  delivery:")
+    lines.append("    hosting:")
+
+    for v in versions:
+        if v.download_type == "external" and v.external_url:
+            lines.append(f"      - type: external")
+            lines.append(f"        url: {v.external_url}")
+            if v.external_label:
+                lines.append(f"        label: {v.external_label}")
+            if v.file_hash:
+                lines.append(f"        sha1: {v.file_hash}")
+            lines.append(f"        version: {v.version_string}")
+        elif v.file_url:
+            lines.append(f"      - type: local")
+            lines.append(f"        url: {v.file_url}")
+            if v.file_hash:
+                lines.append(f"        sha1: {v.file_hash}")
+            lines.append(f"        version: {v.version_string}")
+
+    from fastapi.responses import PlainTextResponse
+
+    return PlainTextResponse(
+        content="\n".join(lines) + "\n",
+        media_type="text/yaml; charset=utf-8",
+    )

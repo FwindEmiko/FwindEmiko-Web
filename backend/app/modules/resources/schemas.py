@@ -36,14 +36,23 @@ class ResourceVersionBase(BaseModel):
     changelog: str | None = Field(None, max_length=5000)
     file_url: str | None = Field(None, max_length=500)
     external_url: str | None = Field(None, max_length=500)
+    # 下载方式：local=本站上传 / external=外链网盘
+    download_type: str = Field("local", pattern="^(local|external)$")
+    # 外链网盘标签（如 "百度网盘"），仅 external 时使用
+    external_label: str | None = Field(None, max_length=100)
     file_size: int | None = Field(None, ge=0)
     file_hash: str | None = Field(None, max_length=128)
     is_prerelease: bool = False
 
     @model_validator(mode="after")
     def check_url(self):
-        if not self.file_url and not self.external_url:
-            raise ValueError("file_url 和 external_url 至少提供一个")
+        # local 类型必须有 file_url，external 类型必须有 external_url
+        if self.download_type == "external":
+            if not self.external_url:
+                raise ValueError("外链下载方式必须提供 external_url")
+        else:  # local
+            if not self.file_url:
+                raise ValueError("本站下载方式必须提供 file_url")
         return self
 
 
@@ -56,6 +65,8 @@ class ResourceVersionUpdate(BaseModel):
     changelog: str | None = Field(None, max_length=5000)
     file_url: str | None = Field(None, max_length=500)
     external_url: str | None = Field(None, max_length=500)
+    download_type: str | None = Field(None, pattern="^(local|external)$")
+    external_label: str | None = Field(None, max_length=100)
     file_size: int | None = Field(None, ge=0)
     file_hash: str | None = Field(None, max_length=128)
     is_prerelease: bool | None = None
@@ -70,6 +81,8 @@ class ResourceVersionOut(BaseModel):
     changelog: str | None
     file_url: str | None
     external_url: str | None
+    download_type: str
+    external_label: str | None
     file_size: int | None
     file_hash: str | None
     downloads: int

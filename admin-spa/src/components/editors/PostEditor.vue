@@ -125,7 +125,7 @@ async function initVditor() {
   const Vditor = (await import('vditor')).default
   vditorInstance = new Vditor(editorId, {
     mode: 'wysiwyg',
-    height: 480,
+    height: 560,
     placeholder: '开始写作...',
     value: form.content,
     cache: { enable: false },
@@ -244,12 +244,12 @@ watch(
 
 <template>
   <div>
-    <el-form label-position="top">
+    <el-form label-position="left" label-width="80px">
       <el-form-item label="标题">
         <el-input v-model="form.title" size="large" placeholder="文章标题" />
       </el-form-item>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <el-form-item label="分类">
           <el-select v-model="form.category_id" placeholder="选择分类" clearable class="w-full">
             <el-option
@@ -260,7 +260,7 @@ watch(
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="标签" class="md:col-span-2">
+        <el-form-item label="标签" class="md:col-span-3">
           <el-select v-model="form.tag_ids" multiple placeholder="选择标签" class="w-full">
             <el-option
               v-for="tag in tags"
@@ -276,15 +276,13 @@ watch(
         <el-input v-model="form.summary" type="textarea" :rows="2" placeholder="留空自动取正文前 200 字" />
       </el-form-item>
 
-      <el-form-item label="封面图 URL">
-        <div class="flex items-center gap-2 w-full">
+      <!-- 封面图 URL + 缩略图预览直接显示在输入框下方 -->
+      <el-form-item label="封面图">
+        <div class="w-full">
           <el-input v-model="form.cover_url" placeholder="https://..." />
-          <el-popover v-if="form.cover_url" trigger="hover" placement="left" :width="320">
-            <template #reference>
-              <el-button size="default" plain>预览</el-button>
-            </template>
-            <img :src="form.cover_url" alt="封面预览" class="w-full rounded-lg" />
-          </el-popover>
+          <div v-if="form.cover_url" class="mt-2">
+            <img :src="form.cover_url" alt="封面预览" class="w-full max-w-sm rounded-lg border border-[var(--border)]" />
+          </div>
         </div>
       </el-form-item>
 
@@ -297,7 +295,7 @@ watch(
         <div :id="editorId" class="w-full" />
       </el-form-item>
 
-      <div class="flex gap-3 sticky bottom-0 bg-[var(--bg)] py-3 z-10">
+      <div class="flex gap-3 sticky bottom-0 backdrop-blur-xl py-3 z-10 px-4 -mx-4 border-t border-[var(--border)]" style="background: var(--panel);">
         <el-button @click="submit('draft')">存草稿</el-button>
         <el-button type="primary" @click="submit('published')">发布</el-button>
         <el-button text @click="saveDraft">保存本地草稿</el-button>

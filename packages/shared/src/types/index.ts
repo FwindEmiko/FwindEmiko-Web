@@ -109,6 +109,10 @@ export interface ResourceVersionOut {
   changelog?: string | null
   file_url?: string | null
   external_url?: string | null
+  /** 下载方式：local=本站上传 / external=外链网盘 */
+  download_type?: 'local' | 'external'
+  /** 外链网盘标签（如 "百度网盘"），仅 external 时使用 */
+  external_label?: string | null
   file_size?: number | null
   file_hash?: string | null
   downloads: number

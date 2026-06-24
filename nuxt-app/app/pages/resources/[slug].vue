@@ -31,7 +31,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div class="lg:col-span-2 space-y-8">
         <!-- Screenshots -->
-        <GlassCard v-if="resource.screenshots.length">
+        <GlassCard v-if="resource.screenshots.length" class="no-hover-lift">
           <h2 class="text-lg font-bold text-[var(--text-primary)] mb-4">截图展示</h2>
           <div class="flex gap-3 overflow-x-auto pb-2 snap-x">
             <button
@@ -46,7 +46,7 @@
         </GlassCard>
 
         <!-- Description -->
-        <GlassCard>
+        <GlassCard class="no-hover-lift">
           <h2 class="text-lg font-bold text-[var(--text-primary)] mb-4">资源介绍</h2>
           <article class="prose-custom" v-html="render(resource.description)" />
         </GlassCard>
@@ -54,7 +54,7 @@
 
       <!-- Versions -->
       <div>
-        <GlassCard class="sticky top-24">
+        <GlassCard class="sticky top-24 no-hover-lift">
           <h2 class="text-lg font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--accent)]"><path d="M12 5v14M5 12h14"/></svg>
             版本历史
@@ -75,23 +75,26 @@
               </div>
               <p v-if="version.changelog" class="text-xs text-[var(--text-muted)] line-clamp-2 mb-3">{{ version.changelog }}</p>
               <div class="flex flex-wrap gap-2">
+                <!-- 本站下载：触发下载 API -->
                 <a
-                  v-if="version.file_url"
+                  v-if="version.download_type !== 'external' && version.file_url"
                   :href="resourceApi.downloadVersion(resource.id, version.id)"
                   target="_blank"
                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                  本地下载
+                  本站下载 (v{{ version.version_string }})
                 </a>
+                <!-- 外链下载：新标签页打开网盘 -->
                 <a
-                  v-if="version.external_url"
+                  v-if="version.download_type === 'external' && version.external_url"
                   :href="version.external_url"
                   target="_blank"
-                  class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-glass-hover text-[var(--text-secondary)] border border-glass-border hover:text-[var(--accent)] transition-colors"
+                  rel="noopener"
+                  class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
-                  网盘下载
+                  前往{{ version.external_label || '网盘' }}下载
                 </a>
               </div>
             </div>

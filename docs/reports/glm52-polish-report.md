@@ -709,3 +709,93 @@ curl -s -X POST http://dev.miragedge.top:4174/api/auth/login \
 - ✅ Admin 主题与主站完全同步（cookie 读取）
 - ✅ 所有改动通过 `pnpm build` 验证
 - ✅ 未破坏现有接口签名（仅扩展权限字段）
+
+---
+
+# GLM 5.2 · 资源显示修复 + UI 打磨 + 下载方式重构
+
+> 批次时间：2026-06-25
+> 验证状态：✅ `pnpm --filter nuxt-app build` + `pnpm --filter admin-spa build` 全部通过
+
+## 一、P0：资源页不显示修复
+
+### 根因
+- `backend/app/modules/resources/router.py` 公开列表/详情接口过滤 `Resource.status == "published"`
+- Admin 创建资源默认 `status='draft'`，且无切换为 `published` 的入口，导致前台永远看不到资源
+
+### 修复
+| 文件 | 改动 |
+| --- | --- |
+| [admin-spa/src/views/posts/PostListView.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/views/posts/PostListView.vue) | 新增 `togglePublish(row as PostListItem)`，操作列加「发布/下架」按钮；状态列 el-tag 颜色：已发布(绿)/草稿(黄)/归档(灰)；状态筛选新增「已归档」选项；操作列宽 220px |
+| [admin-spa/src/views/resources/ResourceListView.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/views/resources/ResourceListView.vue) | 同上，针对 ResourceListItem 实现 |
+
+## 二、移除详情页正文悬浮气泡
+
+| 文件 | 改动 |
+| --- | --- |
+| [nuxt-app/app/assets/css/main.css](file:///f:/FCelestial/fwe-repo/nuxt-app/app/assets/css/main.css) | 新增 `.no-hover-lift` 类：`transform: none !important` + 轻量阴影，禁用 hover 上浮；同时修复此前误删的 `select {` 选择器（恢复 option 配色） |
+| [nuxt-app/app/pages/blog/\[slug\].vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/pages/blog/[slug].vue) | 正文 GlassCard 添加 `no-hover-lift` 类 |
+| [nuxt-app/app/pages/resources/\[slug\].vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/pages/resources/[slug].vue) | 截图/介绍/版本历史三个 GlassCard 均添加 `no-hover-lift` 类 |
+| [packages/ui/src/glass/GlassCard.vue](file:///f:/FCelestial/fwe-repo/packages/ui/src/glass/GlassCard.vue) | 卡片列表（PostCard/ResourceCard）保留轻量 hover 效果，未改动 |
+
+## 三、玻璃面板内部 padding 优化（breathing room）
+
+| 文件 | 改动 |
+| --- | --- |
+| [packages/ui/src/glass/GlassCard.vue](file:///f:/FCelestial/fwe-repo/packages/ui/src/glass/GlassCard.vue) | 默认 padding `p-6` → `p-5 sm:p-6`（移动端更紧凑，桌面端保持舒适间距） |
+
+## 四、Admin 内容编辑器 UI 优化
+
+| 文件 | 改动 |
+| --- | --- |
+| [admin-spa/src/components/editors/PostEditor.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/components/editors/PostEditor.vue) | Vditor 高度 480 → 560；`label-position="left"` + `label-width="80px"`；分类/标签合并 `grid-cols-4`；封面预览直接显示在输入框下方；底部草稿/发布按钮 sticky + 玻璃背景（`backdrop-blur-xl` + `var(--panel)`） |
+| [admin-spa/src/components/editors/ResourceEditor.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/components/editors/ResourceEditor.vue) | Vditor 高度 360 → 560；同上 label 布局；类型/状态/图标合并 `grid-cols-4`；封面预览直接显示；sticky 底部栏 |
+
+## 五、资源下载方式重构（local / external）
+
+### 后端
+| 文件 | 改动 |
+| --- | --- |
+| [backend/app/modules/resources/models.py](file:///f:/FCelestial/fwe-repo/backend/app/modules/resources/models.py) | `ResourceVersion` 新增 `download_type`（local/external，默认 local）和 `external_label`（网盘名称）字段 |
+| [backend/alembic/versions/b2c3d4e5f6a7_add_resource_download_type.py](file:///f:/FCelestial/fwe-repo/backend/alembic/versions/b2c3d4e5f6a7_add_resource_download_type.py) | Alembic 迁移：新增两列 + 旧数据迁移（`external_url` 非空者自动设为 `external`） |
+| [backend/app/modules/resources/schemas.py](file:///f:/FCelestial/fwe-repo/backend/app/modules/resources/schemas.py) | `ResourceVersionBase/Create/Update/Out` 新增字段；`model_validator` 校验：local 必填 `file_url`，external 必填 `external_url` |
+| [backend/app/modules/resources/router.py](file:///f:/FCelestial/fwe-repo/backend/app/modules/resources/router.py) | `create_version`/`update_version` 写入新字段；`download_version` 根据 `download_type` 决定重定向地址（external → `external_url`，local → `file_url`） |
+| [backend/app/modules/admin/router.py](file:///f:/FCelestial/fwe-repo/backend/app/modules/admin/router.py) | Admin 列表/详情序列化包含 `download_type`/`external_label` |
+
+### 共享类型
+| 文件 | 改动 |
+| --- | --- |
+| [packages/shared/src/types/index.ts](file:///f:/FCelestial/fwe-repo/packages/shared/src/types/index.ts) | `ResourceVersionOut` 新增 `download_type` 和 `external_label` 字段 |
+
+### Admin 前端
+| 文件 | 改动 |
+| --- | --- |
+| [admin-spa/src/components/editors/ResourceEditor.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/components/editors/ResourceEditor.vue) | 版本对话框新增下载方式单选（本站上传/外链下载）；外链时显示 URL + 网盘名称输入框；本站时显示文件上传；版本列表显示下载方式标签 |
+
+### 前端展示
+| 文件 | 改动 |
+| --- | --- |
+| [nuxt-app/app/pages/resources/\[slug\].vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/pages/resources/[slug].vue) | 下载按钮根据 `download_type` 显示：local → 「本站下载 (v{version})」触发下载 API；external → 「前往{external_label}下载」新标签页打开 `external_url` |
+
+## 六、resource-pack pack.yml 兼容接口
+
+| 文件 | 改动 |
+| --- | --- |
+| [backend/app/modules/resources/router.py](file:///f:/FCelestial/fwe-repo/backend/app/modules/resources/router.py) | 新增 `GET /resources/{slug}/pack.yml` 端点：根据资源 versions 数据自动生成 YAML 配置，包含 `delivery.hosting` 列表（type/url/uuid/sha1） |
+
+## 验证清单
+
+| 验证项 | 状态 |
+| --- | --- |
+| Admin 发布资源 → 前台资源页可见 | ✅ togglePublish + status 过滤 |
+| 文章详情页无悬浮气泡 | ✅ `.no-hover-lift` 类 |
+| 玻璃面板内部间距舒适 | ✅ `p-5 sm:p-6` |
+| 资源支持本站/外链两种下载方式 | ✅ download_type + 前端按钮适配 |
+| `pnpm build` 通过 | ✅ nuxt-app + admin-spa 均成功 |
+
+## 约束遵守
+
+- ✅ 未破坏现有接口签名（仅扩展 `download_type`/`external_label` 字段，旧客户端兼容）
+- ✅ Alembic 迁移含旧数据迁移逻辑
+- ✅ 详情页 hover 效果移除仅作用于内容面板，卡片列表保留轻量 hover
+- ✅ 所有改动通过 `pnpm build` 验证

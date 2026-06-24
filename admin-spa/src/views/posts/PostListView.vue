@@ -71,6 +71,19 @@ async function deletePost(id: number) {
   }
 }
 
+// 发布/下架文章
+async function togglePublish(row: PostListItem) {
+  const target = row.status === 'published' ? 'draft' : 'published'
+  const action = target === 'published' ? '发布' : '下架'
+  try {
+    await api.put(`/posts/${row.id}`, { status: target })
+    ElMessage.success(`${action}成功`)
+    loadPosts()
+  } catch (error: any) {
+    ElMessage.error(error.message || `${action}失败`)
+  }
+}
+
 async function batchDelete() {
   if (!selected.value.length) return
   try {
@@ -158,9 +171,17 @@ onMounted(() => {
             {{ formatDateTime(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" text @click="router.push(`/posts/${row.id}`)">编辑</el-button>
+            <el-button
+              :type="row.status === 'published' ? 'warning' : 'success'"
+              size="small"
+              text
+              @click="togglePublish(row as PostListItem)"
+            >
+              {{ row.status === 'published' ? '下架' : '发布' }}
+            </el-button>
             <el-button type="danger" size="small" text @click="deletePost(row.id)">删除</el-button>
           </template>
         </el-table-column>

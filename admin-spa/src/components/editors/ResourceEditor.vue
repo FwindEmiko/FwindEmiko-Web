@@ -34,6 +34,9 @@ interface VersionForm {
   changelog: string
   file_url: string
   external_url: string
+  // 下载方式：local=本站上传 / external=外链网盘
+  download_type: 'local' | 'external'
+  external_label: string
   file_size: number | null
   file_hash: string
   is_prerelease: boolean
@@ -85,6 +88,8 @@ const versionForm = reactive<VersionForm>({
   changelog: '',
   file_url: '',
   external_url: '',
+  download_type: 'local',
+  external_label: '',
   file_size: null,
   file_hash: '',
   is_prerelease: false,
@@ -203,7 +208,7 @@ async function initVditor() {
   const Vditor = (await import('vditor')).default
   vditorInstance = new Vditor(editorId, {
     mode: 'wysiwyg',
-    height: 360,
+    height: 560,
     placeholder: '开始编写资源描述...',
     value: form.description,
     cache: { enable: false },
@@ -361,6 +366,8 @@ function openVersionDialog(existing?: ResourceVersionOut | VersionForm) {
   versionForm.changelog = ''
   versionForm.file_url = ''
   versionForm.external_url = ''
+  versionForm.download_type = 'local'
+  versionForm.external_label = ''
   versionForm.file_size = null
   versionForm.file_hash = ''
   versionForm.is_prerelease = false
@@ -370,6 +377,8 @@ function openVersionDialog(existing?: ResourceVersionOut | VersionForm) {
     versionForm.changelog = existing.changelog || ''
     versionForm.file_url = existing.file_url || ''
     versionForm.external_url = existing.external_url || ''
+    versionForm.download_type = (existing.download_type as 'local' | 'external') || 'local'
+    versionForm.external_label = existing.external_label || ''
     versionForm.file_size = existing.file_size ?? null
     versionForm.file_hash = existing.file_hash || ''
     versionForm.is_prerelease = existing.is_prerelease
@@ -385,8 +394,13 @@ async function saveVersion() {
     ElMessage.warning('请输入版本号')
     return
   }
-  if (!versionForm.file_url.trim() && !versionForm.external_url.trim()) {
-    ElMessage.warning('文件地址和外部链接至少填写一个')
+  // 根据下载方式校验必填字段
+  if (versionForm.download_type === 'external' && !versionForm.external_url.trim()) {
+    ElMessage.warning('外链下载方式必须填写外部链接')
+    return
+  }
+  if (versionForm.download_type === 'local' && !versionForm.file_url.trim()) {
+    ElMessage.warning('本站下载方式必须填写文件地址或上传文件')
     return
   }
   const payload = { ...versionForm }
@@ -579,12 +593,13 @@ watch(() => props.resourceId, (id, oldId) => {
     <el-tabs v-model="activeTab" type="border-card">
       <!-- Tab 1: 基本信息 -->
       <el-tab-pane label="基本信息" name="basic">
-        <el-form label-position="top">
+        <el-form label-position="left" label-width="80px">
           <el-form-item label="标题">
             <el-input v-model="form.title" size="large" placeholder="资源标题" />
           </el-form-item>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- 类型 + 状态合并为一行 -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <el-form-item label="类型">
               <el-select v-model="form.type" class="w-full">
                 <el-option
@@ -601,6 +616,10 @@ watch(() => props.resourceId, (id, oldId) => {
                 <el-radio-button label="draft">草稿</el-radio-button>
                 <el-radio-button label="published">已发布</el-radio-button>
               </el-radio-group>
+            </el-form-item>
+
+            <el-form-item label="图标 URL" class="md:col-span-2">
+              <el-input v-model="form.icon_url" placeholder="https://..." />
             </el-form-item>
           </div>
 
@@ -638,55 +657,41 @@ watch(() => props.resourceId, (id, oldId) => {
             </div>
           </el-form-item>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <el-form-item label="图标 URL">
-              <div class="flex items-center gap-2 w-full">
-                <el-input v-model="form.icon_url" placeholder="https://..." />
-                <el-popover v-if="form.icon_url" trigger="hover" placement="bottom" :width="120">
-                  <template #reference>
-                    <el-button size="default" plain>预览</el-button>
-                  </template>
-                  <img :src="form.icon_url" alt="图标预览" class="w-16 h-16 rounded-lg mx-auto object-cover" />
-                </el-popover>
-              </div>
-            </el-form-item>
-            <el-form-item label="封面 URL">
-              <div class="flex items-center gap-2 w-full">
-                <el-input v-model="form.cover_url" placeholder="https://..." />
-                <el-popover v-if="form.cover_url" trigger="hover" placement="bottom" :width="320">
-                  <template #reference>
-                    <el-button size="default" plain>预览</el-button>
-                  </template>
-                  <img :src="form.cover_url" alt="封面预览" class="w-full rounded-lg" />
-                </el-popover>
-              </div>
-            </el-form-item>
-          </div>
-
-          <el-form-item label="描述">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm text-[var(--text-secondary)]">支持 Markdown，可保存为模板复用</span>
-              <div class="flex gap-2">
-                <el-select
-                  v-if="templates.length"
-                  placeholder="加载模板"
-                  clearable
-                  class="w-40"
-                  @change="applyTemplate"
-                >
-                  <el-option
-                    v-for="t in templates"
-                    :key="t.name"
-                    :label="t.name"
-                    :value="t.name"
-                  />
-                </el-select>
-                <el-button text @click="templateDialogVisible = true">
-                  <Save class="w-4 h-4 mr-1" /> 保存为模板
-                </el-button>
+          <!-- 封面 URL + 缩略图预览直接显示在输入框下方 -->
+          <el-form-item label="封面 URL">
+            <div class="w-full">
+              <el-input v-model="form.cover_url" placeholder="https://..." />
+              <div v-if="form.cover_url" class="mt-2">
+                <img :src="form.cover_url" alt="封面预览" class="w-full max-w-sm rounded-lg border border-[var(--border)]" />
               </div>
             </div>
-            <div :id="editorId" class="w-full" />
+          </el-form-item>
+
+          <el-form-item label="描述">
+            <div class="w-full">
+              <div class="flex items-center justify-end mb-2">
+                <div class="flex gap-2">
+                  <el-select
+                    v-if="templates.length"
+                    placeholder="加载模板"
+                    clearable
+                    class="w-40"
+                    @change="applyTemplate"
+                  >
+                    <el-option
+                      v-for="t in templates"
+                      :key="t.name"
+                      :label="t.name"
+                      :value="t.name"
+                    />
+                  </el-select>
+                  <el-button text @click="templateDialogVisible = true">
+                    <Save class="w-4 h-4 mr-1" /> 保存为模板
+                  </el-button>
+                </div>
+              </div>
+              <div :id="editorId" class="w-full" />
+            </div>
           </el-form-item>
         </el-form>
       </el-tab-pane>
@@ -764,12 +769,20 @@ watch(() => props.resourceId, (id, oldId) => {
               <div class="flex items-center gap-2 mb-1">
                 <el-tag size="small" type="primary">{{ version.version_string }}</el-tag>
                 <el-tag v-if="version.is_prerelease" size="small" type="warning">预发布</el-tag>
+                <el-tag
+                  size="small"
+                  :type="version.download_type === 'external' ? 'success' : 'info'"
+                >
+                  {{ version.download_type === 'external' ? (version.external_label || '外链') : '本站' }}
+                </el-tag>
                 <span class="text-xs text-[var(--text-secondary)]">下载量 {{ version.downloads }}</span>
               </div>
               <div class="text-sm text-[var(--text-secondary)] line-clamp-2">{{ version.changelog || '无更新日志' }}</div>
               <div class="text-xs text-[var(--text-secondary)] mt-1 truncate">
-                <span v-if="version.file_url" class="mr-3">文件：{{ version.file_url }}</span>
-                <span v-if="version.external_url">外链：{{ version.external_url }}</span>
+                <span v-if="version.download_type === 'external'" class="text-[var(--accent)]">
+                  {{ version.external_label || '外链' }}：{{ version.external_url }}
+                </span>
+                <span v-else-if="version.file_url">文件：{{ version.file_url }}</span>
               </div>
             </div>
             <div class="flex gap-2">
@@ -802,7 +815,7 @@ watch(() => props.resourceId, (id, oldId) => {
       </el-tab-pane>
     </el-tabs>
 
-    <div class="flex gap-3 sticky bottom-0 bg-[var(--bg)] py-3 z-10 mt-4">
+    <div class="flex gap-3 sticky bottom-0 backdrop-blur-xl py-3 z-10 mt-4 px-4 -mx-4 border-t border-[var(--border)]" style="background: var(--panel);">
       <el-button :loading="saving" @click="submit('draft')">存草稿</el-button>
       <el-button :loading="saving" type="primary" @click="submit('published')">发布</el-button>
       <el-button text @click="saveDraft">保存本地草稿</el-button>
@@ -810,25 +823,65 @@ watch(() => props.resourceId, (id, oldId) => {
     </div>
 
     <!-- Version Dialog -->
-    <el-dialog v-model="versionDialogVisible" title="版本信息" width="600px" @close="editingVersionIndex = -1">
-      <el-form label-position="top">
+    <el-dialog v-model="versionDialogVisible" title="版本信息" width="640px" @close="editingVersionIndex = -1">
+      <el-form label-position="left" label-width="90px">
         <el-form-item label="版本号">
           <el-input v-model="versionForm.version_string" placeholder="如 1.2.0" />
         </el-form-item>
-        <div class="grid grid-cols-2 gap-4">
+
+        <!-- 下载方式选择 -->
+        <el-form-item label="下载方式">
+          <el-radio-group v-model="versionForm.download_type">
+            <el-radio-button label="local">本站上传</el-radio-button>
+            <el-radio-button label="external">外链下载</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+
+        <!-- 本站上传：文件地址 -->
+        <template v-if="versionForm.download_type === 'local'">
           <el-form-item label="文件地址">
             <el-input v-model="versionForm.file_url" placeholder="https://... 或 /uploads/..." />
           </el-form-item>
-          <el-form-item label="外部链接">
-            <el-input v-model="versionForm.external_url" placeholder="https://..." />
+        </template>
+
+        <!-- 外链下载：URL + 网盘名称 -->
+        <template v-else>
+          <el-form-item label="网盘名称">
+            <el-select
+              v-model="versionForm.external_label"
+              placeholder="选择或输入网盘名称"
+              filterable
+              allow-create
+              default-first-option
+              class="w-full"
+            >
+              <el-option label="百度网盘" value="百度网盘" />
+              <el-option label="123云盘" value="123云盘" />
+              <el-option label="阿里云盘" value="阿里云盘" />
+              <el-option label="夸克网盘" value="夸克网盘" />
+              <el-option label="腾讯微云" value="腾讯微云" />
+              <el-option label="蓝奏云" value="蓝奏云" />
+              <el-option label="GitHub" value="GitHub" />
+              <el-option label="其他" value="其他" />
+            </el-select>
           </el-form-item>
-        </div>
+          <el-form-item label="外部链接">
+            <el-input v-model="versionForm.external_url" placeholder="https://pan.baidu.com/..." />
+          </el-form-item>
+        </template>
+
         <div class="grid grid-cols-2 gap-4">
-          <el-form-item label="文件大小（字节）">
-            <el-input-number v-model="versionForm.file_size" :min="0" class="w-full" controls-position="right" />
+          <el-form-item label="文件大小">
+            <el-input-number
+              v-model="versionForm.file_size"
+              :min="0"
+              class="w-full"
+              controls-position="right"
+              placeholder="字节"
+            />
           </el-form-item>
           <el-form-item label="文件哈希">
-            <el-input v-model="versionForm.file_hash" placeholder="SHA256" />
+            <el-input v-model="versionForm.file_hash" placeholder="SHA256（可选）" />
           </el-form-item>
         </div>
         <el-form-item label="更新日志">

@@ -44,7 +44,7 @@
     </div>
 
     <!-- Content -->
-    <GlassCard class="mb-8">
+    <GlassCard class="mb-8 no-hover-lift">
       <article class="prose-custom" v-html="post.content_html || render(post.content_md)" />
     </GlassCard>
 

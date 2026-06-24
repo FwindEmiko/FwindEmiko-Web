@@ -65,6 +65,10 @@ class ResourceVersion(Base):
     changelog: Mapped[str | None] = mapped_column(Text, nullable=True)
     file_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     external_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # 下载方式：local=本站上传 / external=外链网盘
+    download_type: Mapped[str] = mapped_column(String(20), default="local", nullable=False)
+    # 外链网盘标签（如 "百度网盘"、"123云盘"），仅 download_type=external 时使用
+    external_label: Mapped[str | None] = mapped_column(String(100), nullable=True)
     file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
     file_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
     downloads: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

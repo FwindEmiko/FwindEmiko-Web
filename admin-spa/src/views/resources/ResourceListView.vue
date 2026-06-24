@@ -72,6 +72,19 @@ async function deleteResource(id: number) {
   }
 }
 
+// 发布/下架资源
+async function togglePublish(row: ResourceListItem) {
+  const target = row.status === 'published' ? 'draft' : 'published'
+  const action = target === 'published' ? '发布' : '下架'
+  try {
+    await api.put(`/resources/${row.id}`, { status: target })
+    ElMessage.success(`${action}成功`)
+    loadResources()
+  } catch (error: any) {
+    ElMessage.error(error.message || `${action}失败`)
+  }
+}
+
 async function batchDelete() {
   if (!selected.value.length) return
   try {
@@ -109,6 +122,7 @@ onMounted(loadResources)
         <el-select v-model="filters.status" placeholder="状态" clearable class="w-32">
           <el-option label="草稿" value="draft" />
           <el-option label="已发布" value="published" />
+          <el-option label="已归档" value="archived" />
         </el-select>
         <el-select v-model="filters.type" placeholder="类型" clearable class="w-32">
           <el-option label="插件" value="plugin" />
@@ -138,8 +152,8 @@ onMounted(loadResources)
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag size="small" :type="row.status === 'published' ? 'success' : 'info'">
-              {{ row.status === 'published' ? '已发布' : '草稿' }}
+            <el-tag size="small" :type="row.status === 'published' ? 'success' : row.status === 'draft' ? 'warning' : 'info'">
+              {{ row.status === 'published' ? '已发布' : row.status === 'draft' ? '草稿' : '归档' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -154,9 +168,17 @@ onMounted(loadResources)
             {{ formatDateTime(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" text @click="router.push(`/resources/${row.id}`)">编辑</el-button>
+            <el-button
+              :type="row.status === 'published' ? 'warning' : 'success'"
+              size="small"
+              text
+              @click="togglePublish(row as ResourceListItem)"
+            >
+              {{ row.status === 'published' ? '下架' : '发布' }}
+            </el-button>
             <el-button type="danger" size="small" text @click="deleteResource(row.id)">删除</el-button>
           </template>
         </el-table-column>
