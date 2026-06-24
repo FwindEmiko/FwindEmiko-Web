@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.response import success
+from app.core.security import decode_token
 from app.database import get_db
 from app.modules.auth.dependencies import get_current_user_optional, require_role
 from app.modules.auth.models import User
@@ -168,10 +169,25 @@ def _resolve_storage_path(storage_path: str) -> str:
 @router.get("/downloads/files/{file_id}/download")
 async def download_file(
     file_id: int,
+    token: str | None = None,
     user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
 ):
-    """下载文件，触发计数；本地文件流式返回，外部链接 302 跳转"""
+    """下载文件，触发计数；本地文件流式返回，外部链接 302 跳转
+
+    支持两种认证方式：
+    - Authorization: Bearer <token> header（axios 请求）
+    - ?token=<token> query 参数（浏览器 <a href> 链接跳转，无法带 header）
+    """
+    # query token 兜底：浏览器 <a> 跳转无法带 Authorization header
+    if user is None and token:
+        payload = decode_token(token)
+        if payload and payload.get("type") == "access" and payload.get("sub"):
+            result = await db.execute(select(User).where(User.id == int(payload["sub"])))
+            u = result.scalar_one_or_none()
+            if u and u.is_active:
+                user = u
+
     result = await db.execute(select(FileNode).where(FileNode.id == file_id))
     file_node = result.scalar_one_or_none()
     if file_node is None:

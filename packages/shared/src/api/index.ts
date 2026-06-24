@@ -178,7 +178,11 @@ export const downloadApi = {
     return unwrap(api.get<ApiResponse<FolderFilesResponse>>(`/downloads/folders/${folderId}/files`))
   },
   downloadFile(fileId: number) {
-    return `${API_BASE_URL}/downloads/files/${fileId}/download`
+    // 浏览器 <a href> 跳转无法带 Authorization header，
+    // 通过 query 参数传递 token，后端下载接口支持 ?token=xxx 认证
+    const token = getAccessToken()
+    const base = `${API_BASE_URL}/downloads/files/${fileId}/download`
+    return token ? `${base}?token=${encodeURIComponent(token)}` : base
   },
 }
 
