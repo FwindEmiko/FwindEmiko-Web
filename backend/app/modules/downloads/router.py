@@ -222,6 +222,8 @@ async def _apply_permission_rules(
             role=rule.role,
             can_read=rule.can_read,
             can_download=rule.can_download,
+            can_upload=rule.can_upload,
+            can_delete=rule.can_delete,
         )
         db.add(perm)
 
@@ -327,13 +329,16 @@ async def delete_folder(
 async def upload_files(
     folder_id: int = Query(...),
     files: list[UploadFile] = File(...),
-    user: User = Depends(require_role("admin")),
+    user: User = Depends(require_role("admin", "author", "member")),
     db: AsyncSession = Depends(get_db),
 ):
-    """上传文件到指定文件夹（admin）"""
+    """上传文件到指定文件夹（需 can_upload 权限）"""
     folder = await db.get(Folder, folder_id)
     if folder is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文件夹不存在")
+
+    if not await check_folder_access(folder_id, user, "upload", db):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权上传到该文件夹")
 
     base_dir = os.path.join(settings.UPLOAD_DIR, "downloads", str(folder_id))
     os.makedirs(base_dir, exist_ok=True)
@@ -370,19 +375,156 @@ async def upload_files(
 @router.delete("/downloads/files/{file_id}")
 async def delete_file(
     file_id: int,
-    user: User = Depends(require_role("admin")),
+    user: User = Depends(require_role("admin", "author", "member")),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除文件（admin），同时删除物理文件"""
+    """删除文件（需 can_delete 权限），同时删除物理文件"""
     result = await db.execute(select(FileNode).where(FileNode.id == file_id))
     file_node = result.scalar_one_or_none()
     if file_node is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文件不存在")
+
+    if not await check_folder_access(file_node.folder_id, user, "delete", db):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权删除该文件")
 
     full_path = _resolve_storage_path(file_node.storage_path)
     if os.path.exists(full_path):
         os.remove(full_path)
 
     await db.delete(file_node)
+    await db.commit()
+    return success(None)
+
+
+# === 权限矩阵管理接口（admin） ===
+
+ALL_ROLES = ["admin", "author", "member", "guest"]
+
+
+@router.get("/admin/permissions/folders")
+async def get_permission_matrix(
+    user: User = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """返回所有文件夹 + 各角色权限矩阵"""
+    folders_result = await db.execute(select(Folder).order_by(Folder.id))
+    folders = list(folders_result.scalars().all())
+
+    perms_result = await db.execute(select(FolderPermission))
+    all_perms = list(perms_result.scalars().all())
+
+    # 按 folder_id 分组
+    perms_by_folder: dict[int, list[FolderPermission]] = {}
+    for p in all_perms:
+        perms_by_folder.setdefault(p.folder_id, []).append(p)
+
+    matrix_folders: list[dict] = []
+    for folder in folders:
+        folder_perms = perms_by_folder.get(folder.id, [])
+        perm_items: list[dict] = []
+        for role in ALL_ROLES:
+            existing = next((p for p in folder_perms if p.role == role), None)
+            if existing:
+                perm_items.append(
+                    {
+                        "folder_id": folder.id,
+                        "folder_name": folder.name,
+                        "role": role,
+                        "can_read": existing.can_read,
+                        "can_download": existing.can_download,
+                        "can_upload": existing.can_upload,
+                        "can_delete": existing.can_delete,
+                    }
+                )
+            else:
+                # 默认值：admin 全开，其他角色 read=True 其余 False
+                if role == "admin":
+                    perm_items.append(
+                        {
+                            "folder_id": folder.id,
+                            "folder_name": folder.name,
+                            "role": role,
+                            "can_read": True,
+                            "can_download": True,
+                            "can_upload": True,
+                            "can_delete": True,
+                        }
+                    )
+                else:
+                    perm_items.append(
+                        {
+                            "folder_id": folder.id,
+                            "folder_name": folder.name,
+                            "role": role,
+                            "can_read": True,
+                            "can_download": False,
+                            "can_upload": False,
+                            "can_delete": False,
+                        }
+                    )
+        matrix_folders.append(
+            {
+                "folder_id": folder.id,
+                "folder_name": folder.name,
+                "permissions": perm_items,
+            }
+        )
+
+    return success({"folders": matrix_folders, "roles": ALL_ROLES})
+
+
+@router.put("/admin/permissions")
+async def update_permission_matrix(
+    payload: schemas.PermissionBatchUpdate,
+    user: User = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """批量更新文件夹权限矩阵
+
+    对每个 (folder_id, role) 组合执行 upsert：
+    - 存在则更新
+    - 不存在则插入
+    admin 角色记录强制保持全权限（防止误锁）
+    """
+    # 按 folder_id 分组请求项
+    by_folder: dict[int, list[schemas.PermissionBatchUpdateItem]] = {}
+    for item in payload.items:
+        by_folder.setdefault(item.folder_id, []).append(item)
+
+    for folder_id, items in by_folder.items():
+        # 拉取该文件夹现有权限
+        existing_result = await db.execute(
+            select(FolderPermission).where(FolderPermission.folder_id == folder_id)
+        )
+        existing_perms = {p.role: p for p in existing_result.scalars().all()}
+
+        for item in items:
+            # admin 强制全开，防止误锁
+            if item.role == "admin":
+                can_read = can_download = can_upload = can_delete = True
+            else:
+                can_read = item.can_read
+                can_download = item.can_download
+                can_upload = item.can_upload
+                can_delete = item.can_delete
+
+            if item.role in existing_perms:
+                perm = existing_perms[item.role]
+                perm.can_read = can_read
+                perm.can_download = can_download
+                perm.can_upload = can_upload
+                perm.can_delete = can_delete
+            else:
+                db.add(
+                    FolderPermission(
+                        folder_id=folder_id,
+                        role=item.role,
+                        can_read=can_read,
+                        can_download=can_download,
+                        can_upload=can_upload,
+                        can_delete=can_delete,
+                    )
+                )
+
     await db.commit()
     return success(None)

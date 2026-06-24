@@ -5,8 +5,10 @@ import {
   Box,
   FolderOpen,
   Users,
+  Shield,
   ChevronLeft,
   ChevronRight,
+  Home,
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
@@ -20,18 +22,23 @@ const menu = [
   { name: 'ResourceList', label: '资源', icon: Box, path: '/resources' },
   { name: 'Files', label: '文件', icon: FolderOpen, path: '/files', admin: true },
   { name: 'Users', label: '用户', icon: Users, path: '/users', admin: true },
+  { name: 'Permissions', label: '权限', icon: Shield, path: '/permissions', admin: true },
 ]
 
 const visibleMenu = menu.filter((item) => !item.admin || auth.isAdmin)
+
+// 返回主站
+const homeUrl = 'https://f.windemiko.top'
 </script>
 
 <template>
   <aside
-    class="flex flex-col border-r border-[var(--border)] bg-white transition-all duration-300"
+    class="flex flex-col border-r border-[var(--border)] backdrop-blur-xl transition-all duration-300"
     :class="app.sidebarCollapsed ? 'w-16' : 'w-56'"
+    style="background: var(--panel);"
   >
     <div class="h-14 flex items-center justify-center border-b border-[var(--border)]">
-      <span v-if="!app.sidebarCollapsed" class="font-semibold text-lg">FwindAdmin</span>
+      <span v-if="!app.sidebarCollapsed" class="font-semibold text-lg text-[var(--text-primary)]">FwindAdmin</span>
       <span v-else class="font-bold text-xl text-[var(--accent)]">F</span>
     </div>
 
@@ -49,9 +56,22 @@ const visibleMenu = menu.filter((item) => !item.admin || auth.isAdmin)
       </router-link>
     </nav>
 
+    <!-- 返回主站链接 -->
+    <div class="px-3 py-2 border-t border-[var(--border)]">
+      <a
+        :href="homeUrl"
+        class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--accent-light)] rounded-lg transition-colors"
+        :class="{ 'justify-center': app.sidebarCollapsed }"
+        title="返回主站"
+      >
+        <Home class="w-5 h-5 flex-shrink-0" />
+        <span v-if="!app.sidebarCollapsed">返回主页</span>
+      </a>
+    </div>
+
     <div class="p-3 border-t border-[var(--border)]">
       <button
-        class="w-full flex items-center justify-center gap-2 p-2 rounded-lg hover:bg-gray-100 text-[var(--text-secondary)]"
+        class="w-full flex items-center justify-center gap-2 p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--text-secondary)]"
         @click="app.toggleSidebar"
       >
         <ChevronLeft v-if="!app.sidebarCollapsed" class="w-4 h-4" />

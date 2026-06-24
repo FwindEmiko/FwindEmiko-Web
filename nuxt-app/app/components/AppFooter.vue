@@ -1,8 +1,8 @@
 <template>
   <footer class="border-t border-glass-border mt-auto">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-      <!-- 桌面：三列紧凑布局 / 移动：单列堆叠居中 -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 text-center md:text-left">
+      <!-- 桌面：三列左对齐 / 移动：单列居中堆叠 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
 
         <!-- Brand -->
         <div class="flex flex-col items-center md:items-start">
@@ -40,16 +40,16 @@
         </div>
       </div>
 
-      <!-- ASCII art fox (P1-2) -->
+      <!-- ASCII art fox (P1-2) - 居中显示 -->
       <div
-        class="mt-6 mb-4 select-none cursor-pointer transition-opacity hover:opacity-100 opacity-60 flex justify-center md:justify-start"
+        class="mt-6 mb-4 select-none cursor-pointer transition-opacity hover:opacity-100 opacity-60 flex justify-center"
         title="点击 5 次解锁彩蛋"
         @click="handleFoxClick"
       >
         <pre class="text-[var(--color-terminal)] text-xs font-mono leading-tight">{{ asciiFox }}</pre>
       </div>
 
-      <!-- 版权 + 备案号（备案号独立一行居中） -->
+      <!-- 版权 + 备案号（备案号独立一行居中，border-t 分隔） -->
       <div class="pt-4 border-t border-glass-border flex flex-col items-center gap-1.5 text-xs text-[var(--text-muted)]">
         <p>© {{ new Date().getFullYear() }} 狐风轩汐の小屋. All rights reserved.</p>
         <p>

@@ -21,7 +21,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex h-screen overflow-hidden bg-[var(--bg)]">
+  <div class="flex h-screen overflow-hidden bg-[var(--bg-primary)]">
     <!-- desktop sidebar -->
     <AdminSidebar class="hidden md:flex" />
 

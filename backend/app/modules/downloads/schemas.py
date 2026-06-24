@@ -8,6 +8,8 @@ class FolderPermissionRule(BaseModel):
     role: str = Field(..., pattern="^(admin|author|member|guest)$")
     can_read: bool = True
     can_download: bool = False
+    can_upload: bool = False
+    can_delete: bool = False
 
 
 class FolderBase(BaseModel):
@@ -76,3 +78,44 @@ class FolderFilesResponse(BaseModel):
     breadcrumbs: list[BreadcrumbItem]
     subfolders: list[SubFolderItem]
     files: list[FileItem]
+
+
+# === 权限矩阵 ===
+
+
+class PermissionMatrixItem(BaseModel):
+    """单个文件夹 + 单个角色的权限条目"""
+    folder_id: int
+    folder_name: str
+    role: str
+    can_read: bool
+    can_download: bool
+    can_upload: bool
+    can_delete: bool
+
+
+class PermissionMatrixFolder(BaseModel):
+    """文件夹在权限矩阵中的展示条目"""
+    folder_id: int
+    folder_name: str
+    permissions: list[PermissionMatrixItem]
+
+
+class PermissionMatrixResponse(BaseModel):
+    """权限矩阵响应：所有文件夹 × 所有角色"""
+    folders: list[PermissionMatrixFolder]
+    roles: list[str] = ["admin", "author", "member", "guest"]
+
+
+class PermissionBatchUpdateItem(BaseModel):
+    folder_id: int
+    role: str = Field(..., pattern="^(admin|author|member|guest)$")
+    can_read: bool = True
+    can_download: bool = False
+    can_upload: bool = False
+    can_delete: bool = False
+
+
+class PermissionBatchUpdate(BaseModel):
+    """批量更新权限请求"""
+    items: list[PermissionBatchUpdateItem]

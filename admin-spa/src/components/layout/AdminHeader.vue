@@ -25,11 +25,11 @@ function logout() {
 </script>
 
 <template>
-  <header class="h-14 bg-white border-b border-[var(--border)] flex items-center justify-between px-4 sticky top-0 z-20">
+  <header class="h-14 border-b border-[var(--border)] flex items-center justify-between px-4 sticky top-0 z-20 backdrop-blur-xl" style="background: var(--panel);">
     <div class="flex items-center gap-3">
       <button
         v-if="app.isMobile"
-        class="p-2 rounded-lg hover:bg-gray-100 text-[var(--text-secondary)]"
+        class="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--text-secondary)]"
         @click="app.toggleSidebar"
       >
         <Menu class="w-5 h-5" />
@@ -39,7 +39,7 @@ function logout() {
           <router-link v-if="idx < breadcrumbs.length - 1" :to="item.path" class="text-[var(--text-secondary)] hover:text-[var(--accent)]">
             {{ item.title }}
           </router-link>
-          <span v-else class="text-[var(--text)] font-medium">{{ item.title }}</span>
+          <span v-else class="text-[var(--text-primary)] font-medium">{{ item.title }}</span>
         </el-breadcrumb-item>
       </el-breadcrumb>
     </div>

@@ -62,6 +62,12 @@ const routes = [
     component: () => import('@/views/UserManagerView.vue'),
     meta: { auth: true, role: 'admin', title: '用户管理' },
   },
+  {
+    path: '/permissions',
+    name: 'Permissions',
+    component: () => import('@/views/PermissionManagerView.vue'),
+    meta: { auth: true, role: 'admin', title: '权限管理' },
+  },
 ]
 
 const router = createRouter({

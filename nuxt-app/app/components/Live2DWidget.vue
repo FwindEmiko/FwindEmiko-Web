@@ -204,13 +204,17 @@ function destroyPixi() {
   }
 }
 
-// 当 visible 变为 true 时初始化/恢复模型
+// 当 visible 变化时管理 PIXI 生命周期
+// 关闭时销毁资源，下次打开重新初始化（避免 v-if 重建 DOM 后旧 app 绑定在已销毁的 canvas 上）
 watch(() => props.visible, async (val) => {
   if (val) {
     await nextTick()
     if (!app) {
       initPixi()
     }
+  } else {
+    // 关闭时销毁 PIXI，下次打开会重新初始化绑定到新的 canvas
+    destroyPixi()
   }
 })
 

@@ -26,6 +26,18 @@
             >
               {{ item.label }}
             </NuxtLink>
+            <!-- 外部文档链接 -->
+            <a
+              v-for="link in externalLinks"
+              :key="link.url"
+              :href="link.url"
+              target="_blank"
+              rel="noopener"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-glass-hover transition-colors flex items-center gap-1"
+            >
+              {{ link.label }}
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+            </a>
           </nav>
 
           <!-- Search -->
@@ -152,6 +164,21 @@
           >
             {{ item.label }}
           </NuxtLink>
+          <!-- 外部文档链接 -->
+          <a
+            v-for="link in externalLinks"
+            :key="link.url"
+            :href="link.url"
+            target="_blank"
+            rel="noopener"
+            class="flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-[var(--text-primary)] hover:bg-glass-hover transition-colors"
+            @click="mobileMenuOpen = false"
+          >
+            <span class="flex items-center gap-1.5">
+              {{ link.label }}
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+            </span>
+          </a>
           <div class="pt-2 border-t border-glass-border mt-2">
             <div class="flex items-center gap-2 px-3 py-2">
               <input
@@ -227,6 +254,11 @@ const navItems = [
   { label: '博客', path: '/blog' },
   { label: '资源', path: '/resources' },
   { label: '下载', path: '/download' },
+]
+
+// 外部链接（新标签页打开）
+const externalLinks = [
+  { label: '文档', url: 'https://miragedge.top' },
 ]
 
 // 点击外部关闭用户下拉菜单

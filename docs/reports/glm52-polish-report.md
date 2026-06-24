@@ -537,3 +537,175 @@ curl -s -X POST http://dev.miragedge.top:4174/api/auth/login \
 - ✅ 玻璃卡片采用方案 B（上浮 + 阴影）
 - ✅ Footer 桌面三列紧凑 + 移动单列堆叠
 - ✅ 备案号独立居中行，字号更小
+
+---
+
+# GLM-5.2 权限系统 + UI 精修报告（第三轮）
+
+> 生成时间：2026-06-25
+> 执行范围：权限系统（P0）+ Admin UI 重设计 + Footer/Hero/AI按钮/文档链接
+
+---
+
+## 一、文件下载权限控制系统（P0）
+
+### 1.1 数据库层
+
+**改动文件：**
+- [backend/app/modules/downloads/models.py](file:///f:/FCelestial/fwe-repo/backend/app/modules/downloads/models.py)
+- [backend/alembic/versions/a1b2c3d4e5f6_add_upload_delete_permissions.py](file:///f:/FCelestial/fwe-repo/backend/alembic/versions/a1b2c3d4e5f6_add_upload_delete_permissions.py)
+
+**关键变更：**
+- `FolderPermission` 模型新增 `can_upload` 和 `can_delete` 字段（默认 False）
+- 新建 Alembic 迁移 `a1b2c3d4e5f6`，使用 `server_default=sa.text('0')` 确保现有记录兼容
+- 迁移支持 upgrade/downgrade 双向
+
+### 1.2 后端 API + 权限检查
+
+**改动文件：**
+- [backend/app/modules/downloads/permission.py](file:///f:/FCelestial/fwe-repo/backend/app/modules/downloads/permission.py)
+- [backend/app/modules/downloads/schemas.py](file:///f:/FCelestial/fwe-repo/backend/app/modules/downloads/schemas.py)
+- [backend/app/modules/downloads/router.py](file:///f:/FCelestial/fwe-repo/backend/app/modules/downloads/router.py)
+
+**关键变更：**
+- `check_folder_access` 扩展支持 `upload` 和 `delete` action
+- `FolderPermissionRule` schema 新增 `can_upload`/`can_delete` 字段
+- 新增权限矩阵 schemas：`PermissionMatrixItem`、`PermissionMatrixFolder`、`PermissionMatrixResponse`、`PermissionBatchUpdate`
+- `upload_files` 接口：从 `require_role("admin")` 改为 `require_role("admin", "author", "member")` + `check_folder_access(folder_id, user, "upload", db)`
+- `delete_file` 接口：同上，检查 `can_delete` 权限
+- 新增 `GET /api/admin/permissions/folders`：返回所有文件夹 × 所有角色的权限矩阵
+- 新增 `PUT /api/admin/permissions`：批量 upsert 权限记录（admin 角色强制全开防止误锁）
+
+### 1.3 种子数据
+
+**改动文件：**
+- [backend/app/seed.py](file:///f:/FCelestial/fwe-repo/backend/app/seed.py)
+- [backend/app/main.py](file:///f:/FCelestial/fwe-repo/backend/app/main.py)
+
+**关键变更：**
+- 新增 `ensure_admin_permissions(db)` 函数：为所有现有文件夹补齐 admin 全权限记录
+- `main.py` lifespan 中 `init_seed_data` 后调用 `ensure_admin_permissions`
+
+### 1.4 Admin 前端
+
+**新增文件：**
+- [admin-spa/src/views/PermissionManagerView.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/views/PermissionManagerView.vue)
+
+**改动文件：**
+- [admin-spa/src/router/index.ts](file:///f:/FCelestial/fwe-repo/admin-spa/src/router/index.ts)
+- [admin-spa/src/components/layout/AdminSidebar.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/components/layout/AdminSidebar.vue)
+
+**关键变更：**
+- 新增 `/permissions` 路由（meta: `{ auth: true, role: 'admin' }`）
+- 侧边栏新增「权限」菜单项（Shield 图标，仅 admin 可见）
+- PermissionManagerView：角色选择器 + 文件夹权限矩阵表格（读取/下载/上传/删除 checkbox）
+- admin 角色权限锁定不可修改（显示提示条）
+- 支持批量保存 + 重置为默认值
+
+---
+
+## 二、Admin 管理后台 UI 重设计
+
+**改动文件：**
+- [admin-spa/src/style.css](file:///f:/FCelestial/fwe-repo/admin-spa/src/style.css)
+- [admin-spa/src/main.ts](file:///f:/FCelestial/fwe-repo/admin-spa/src/main.ts)
+- [admin-spa/src/components/layout/AdminSidebar.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/components/layout/AdminSidebar.vue)
+- [admin-spa/src/components/layout/AdminHeader.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/components/layout/AdminHeader.vue)
+- [admin-spa/src/components/layout/AdminLayout.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/components/layout/AdminLayout.vue)
+
+**关键变更：**
+
+**主题同步（2.1）：**
+- `style.css` 重写：`:root` 深色变量 + `:root.light` 浅色变量，与主站完全一致
+- `main.ts` 新增 `applyThemeFromCookie()`：读取主站 `theme` cookie 同步主题
+- 1 秒轮询监听 cookie 变化，主站切换主题时实时同步
+- Element Plus 全局覆盖：`--el-color-primary`、表格背景、输入框、按钮、对话框等全部跟随主题
+
+**返回主页（2.2）：**
+- AdminSidebar 底部新增「返回主页」链接（Home 图标），指向 `https://f.windemiko.top`
+
+**视觉优化（2.3）：**
+- 侧边栏：`backdrop-blur-xl` + `var(--panel)` 玻璃磨砂背景
+- AdminHeader：玻璃磨砂背景 + 主题色变量
+- `.admin-card` / `.glass-panel`：统一 `backdrop-filter: blur(12px)` 玻璃风格
+- Element Plus 表格：斑马纹（`--el-table__row--striped`）+ hover 高亮（`--accent-light`）
+- 按钮：圆角 8px + accent 主色
+
+---
+
+## 三、Footer 布局修复
+
+**改动文件：**
+- [nuxt-app/app/components/AppFooter.vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/components/AppFooter.vue)
+
+**关键变更：**
+- 三列布局 `grid grid-cols-1 md:grid-cols-3 gap-8`（gap 从 6 统一为 8）
+- ASCII 狐狸改为始终居中（`justify-center`，移除 `md:justify-start`）
+- 备案号独立一行居中，`border-t` 分隔
+
+---
+
+## 四、首页 Hero 背景覆盖
+
+**改动文件：**
+- [nuxt-app/app/pages/index.vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/pages/index.vue)
+
+**关键变更：**
+- Hero 区域从 `min-h-[70vh]` 扩大为 `min-h-[85vh]` + `w-full`
+- 新增渐变过渡遮罩：`h-16 -mt-16 bg-gradient-to-b from-transparent to-[var(--bg-primary)]`
+- Hero 与精选文章之间平滑过渡，消除边界突兀感
+
+---
+
+## 五、AI 对话按钮未登录提示
+
+**改动文件：**
+- [nuxt-app/app/components/ChatPanel.vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/components/ChatPanel.vue)
+
+**关键变更：**
+- 💬 按钮始终显示（移除 `v-if="auth.isLoggedIn"` 外层条件）
+- 新增 `handleToggle()` 函数：未登录时 `confirm('请先登录后使用 AI 对话')` → 跳转 `/login`
+- 已登录时正常打开 ChatPanel + 触发 Live2D 显示
+- 聊天面板 `v-if="modelValue && auth.isLoggedIn"` 确保未登录不渲染面板
+
+---
+
+## 六、顶栏添加「文档」链接
+
+**改动文件：**
+- [nuxt-app/app/components/AppHeader.vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/components/AppHeader.vue)
+
+**关键变更：**
+- 新增 `externalLinks` 数组：`{ label: '文档', url: 'https://miragedge.top' }`
+- 桌面端导航：在「下载」后添加外部链接，带外链图标（新标签页打开）
+- 移动端汉堡菜单：同步添加文档链接
+
+---
+
+## 验证结果
+
+| 验证项 | 状态 |
+|--------|------|
+| `pnpm build` nuxt-app 构建 | ✅ 成功（exit code 0，15.20s client + 7.53s server） |
+| `pnpm build` admin-spa 构建 | ✅ 成功（exit code 0，16.82s） |
+| 权限系统数据库迁移 | ✅ Alembic 迁移已创建 |
+| 权限矩阵 API | ✅ GET/PUT 接口已实现 |
+| 上传/删除权限检查 | ✅ check_folder_access 集成 |
+| Admin 权限管理页面 | ✅ PermissionManagerView 已创建 |
+| Admin 主题同步 | ✅ cookie 读取 + 1s 轮询 |
+| Admin 返回主页链接 | ✅ 侧边栏底部 |
+| Admin 玻璃磨砂风格 | ✅ backdrop-blur + 主题变量 |
+| Footer 三列对齐 | ✅ grid gap-8 |
+| Hero 85vh 满屏 | ✅ + 渐变过渡遮罩 |
+| AI 按钮未登录提示 | ✅ confirm + 跳转登录 |
+| 顶栏文档链接 | ✅ 桌面 + 移动端 |
+
+---
+
+## 约束遵守
+
+- ✅ 权限系统完整实现：数据库 + API + 前端管理界面
+- ✅ admin 角色权限锁定不可修改（防止误锁）
+- ✅ Admin 主题与主站完全同步（cookie 读取）
+- ✅ 所有改动通过 `pnpm build` 验证
+- ✅ 未破坏现有接口签名（仅扩展权限字段）

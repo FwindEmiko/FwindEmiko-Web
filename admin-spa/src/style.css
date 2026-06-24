@@ -1,20 +1,51 @@
 @import "tailwindcss";
 
+/* === 主题变量：与主站一致，支持 dark/light 切换 === */
 :root {
-  --bg: #f8f9fb;
-  --panel: #ffffff;
-  --text: #1f2937;
-  --text-secondary: #6b7280;
-  --border: #e5e7eb;
-  --accent: #7c3aed;
-  --accent-light: #ede9fe;
-  --danger: #ef4444;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --shadow:
-    0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-lg:
-    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  /* 深色默认 - 与主站对齐 */
+  --bg-primary: #0a0a1a;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1f2937;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --accent: #38bdf8;
+  --accent-hover: #0ea5e9;
+  --accent-light: rgba(56, 189, 248, 0.15);
+  --danger: #f87171;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --border: rgba(255, 255, 255, 0.08);
+  --panel: rgba(17, 24, 39, 0.6);
+  --panel-solid: #111827;
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  /* 兼容旧变量名 */
+  --bg: var(--bg-primary);
+  --text: var(--text-primary);
+}
+
+:root.light {
+  /* 浅色 - 与主站对齐 */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --accent: #0284c7;
+  --accent-hover: #0369a1;
+  --accent-light: rgba(2, 132, 199, 0.12);
+  --danger: #dc2626;
+  --success: #16a34a;
+  --warning: #d97706;
+  --border: rgba(0, 0, 0, 0.08);
+  --panel: rgba(255, 255, 255, 0.75);
+  --panel-solid: #ffffff;
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --bg: var(--bg-primary);
+  --text: var(--text-primary);
 }
 
 html,
@@ -25,10 +56,10 @@ body,
 }
 
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  font-family: 'Noto Sans SC', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #app {
@@ -39,8 +70,20 @@ body {
   min-height: 100svh;
 }
 
+/* === 玻璃磨砂卡片风格（与主站统一） === */
 .admin-card {
   background: var(--panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.glass-panel {
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow);
@@ -49,7 +92,7 @@ body {
 .admin-page-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0 0 1rem;
 }
 
@@ -57,15 +100,178 @@ body {
   color: var(--text-secondary);
 }
 
+/* === Element Plus 主题覆盖：紫色 accent + 圆角 === */
+:root {
+  --el-color-primary: #38bdf8;
+  --el-color-primary-light-3: #38bdf8;
+  --el-color-primary-light-5: #38bdf8;
+  --el-color-primary-light-7: #38bdf8;
+  --el-color-primary-light-8: #38bdf8;
+  --el-color-primary-light-9: rgba(56, 189, 248, 0.1);
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+  --el-border-radius-round: 20px;
+}
+
+:root.light {
+  --el-color-primary: #0284c7;
+  --el-color-primary-light-9: rgba(2, 132, 199, 0.1);
+}
+
+/* Element Plus 背景跟随主题 */
+.el-table {
+  background: transparent !important;
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--bg-tertiary);
+  --el-table-row-hover-bg-color: var(--accent-light);
+  --el-table-border-color: var(--border);
+  --el-table-header-text-color: var(--text-secondary);
+  --el-table-text-color: var(--text-primary);
+}
+
+.el-table th.el-table__cell {
+  background: var(--bg-tertiary) !important;
+  color: var(--text-secondary) !important;
+}
+
+.el-table tr {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: var(--bg-secondary) !important;
+}
+
+.el-table__row:hover > td.el-table__cell {
+  background: var(--accent-light) !important;
+}
+
+.el-input__wrapper,
+.el-textarea__inner {
+  background: var(--bg-tertiary) !important;
+  box-shadow: 0 0 0 1px var(--border) inset !important;
+}
+
+.el-input__inner {
+  color: var(--text-primary) !important;
+}
+
+.el-input__inner::placeholder {
+  color: var(--text-muted) !important;
+}
+
+.el-button {
+  border-radius: 8px;
+}
+
+.el-button--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.el-button--primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.el-dialog {
+  background: var(--panel-solid) !important;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.el-dialog__title,
+.el-dialog__body,
+.el-form-item__label {
+  color: var(--text-primary) !important;
+}
+
+.el-breadcrumb__item .el-breadcrumb__inner {
+  color: var(--text-secondary) !important;
+}
+
+.el-breadcrumb__item:last-child .el-breadcrumb__inner {
+  color: var(--text-primary) !important;
+  font-weight: 500;
+}
+
+.el-tag {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.el-checkbox__input.is-checked .el-checkbox__inner,
+.el-checkbox__input.is-indeterminate .el-checkbox__inner {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.el-checkbox__inner {
+  background: var(--bg-tertiary);
+  border-color: var(--border);
+}
+
+.el-tree {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+.el-tree-node__content:hover {
+  background: var(--accent-light) !important;
+}
+
+.el-tree-node.is-current > .el-tree-node__content {
+  background: var(--accent-light) !important;
+}
+
+.el-dropdown-menu {
+  background: var(--panel-solid) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.el-dropdown-menu__item {
+  color: var(--text-secondary) !important;
+}
+
+.el-dropdown-menu__item:hover {
+  background: var(--accent-light) !important;
+  color: var(--accent) !important;
+}
+
+.el-message-box {
+  background: var(--panel-solid) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.el-message-box__title,
+.el-message-box__content,
+.el-message-box__message {
+  color: var(--text-primary) !important;
+}
+
+.el-empty__description {
+  color: var(--text-muted) !important;
+}
+
+.el-loading-mask {
+  background: var(--bg-primary) !important;
+  opacity: 0.7;
+}
+
 /* Vditor 在后台样式适配 */
 .vditor {
   border-color: var(--border) !important;
   border-radius: 8px;
   overflow: hidden;
+  background: var(--panel-solid);
 }
 
 .vditor-toolbar {
   border-bottom-color: var(--border) !important;
+  background: var(--bg-tertiary);
 }
 
 /* 隐藏 Vditor 底部泄露的快捷键提示文本（"一级标题 <Alt+Ctrl+1>..."） */

@@ -1,18 +1,19 @@
 <template>
-  <div v-if="auth.isLoggedIn" class="fixed bottom-24 right-4 z-50 flex flex-col items-end">
-    <!-- Toggle button -->
+  <div class="fixed bottom-24 right-4 z-50 flex flex-col items-end">
+    <!-- Toggle button: 始终显示，未登录时提示 -->
     <button
       v-if="!modelValue"
       class="w-12 h-12 rounded-full glass-panel flex items-center justify-center text-[var(--accent)] shadow-glass hover:scale-105 transition-transform"
-      @click="modelValue = true"
+      title="AI 对话"
+      @click="handleToggle"
     >
       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
     </button>
 
-    <!-- Panel -->
+    <!-- Panel: 仅登录用户显示 -->
     <Transition name="chat-panel">
       <div
-        v-if="modelValue"
+        v-if="modelValue && auth.isLoggedIn"
         class="chat-panel-box w-[90vw] max-w-[420px] glass-panel flex flex-col overflow-hidden"
       >
         <!-- Header -->
@@ -121,6 +122,17 @@ const streaming = ref(false)
 const streamingContent = ref('')
 const messagesRef = ref<HTMLElement>()
 const quota = ref<{ remaining: number } | null>(null)
+
+// 未登录点击 💬 按钮 → 提示并跳转登录
+function handleToggle() {
+  if (!auth.isLoggedIn) {
+    if (confirm('请先登录后使用 AI 对话')) {
+      navigateTo('/login')
+    }
+    return
+  }
+  modelValue.value = true
+}
 
 async function loadQuota() {
   const useMock = import.meta.env.DEV && true

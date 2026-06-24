@@ -11,7 +11,7 @@
     </div>
 
     <!-- Hero -->
-    <section class="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
+    <section class="relative w-full min-h-[85vh] flex items-center justify-center overflow-hidden">
       <!-- Starfield gradient background: 紫→蓝→青 -->
       <div class="absolute inset-0 bg-gradient-to-br from-purple-600/20 via-blue-500/15 to-cyan-400/20" />
 
@@ -79,6 +79,9 @@
         </div>
       </div>
     </section>
+
+    <!-- 渐变过渡遮罩：Hero → 精选文章平滑过渡 -->
+    <div class="relative h-16 -mt-16 bg-gradient-to-b from-transparent to-[var(--bg-primary)] pointer-events-none z-10" aria-hidden="true" />
 
     <!-- Featured posts -->
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
 from app.modules.auth.models import User
+from app.modules.downloads.models import Folder, FolderPermission
 
 logger = logging.getLogger(__name__)
 
@@ -43,3 +44,40 @@ async def init_seed_data(db: AsyncSession) -> None:
         DEFAULT_ADMIN_USERNAME,
         DEFAULT_ADMIN_PASSWORD,
     )
+
+
+async def ensure_admin_permissions(db: AsyncSession) -> None:
+    """为所有现有文件夹补齐 admin 角色的全部权限记录。
+
+    admin 角色在权限检查代码中永远返回 True，但为了权限矩阵 UI 显示完整，
+    需要在数据库中存在 admin 的权限记录。
+    """
+    folders_result = await db.execute(select(Folder.id))
+    folder_ids = [row[0] for row in folders_result.all()]
+    if not folder_ids:
+        return
+
+    for folder_id in folder_ids:
+        # 检查是否已存在 admin 权限记录
+        existing = await db.execute(
+            select(FolderPermission).where(
+                FolderPermission.folder_id == folder_id,
+                FolderPermission.role == "admin",
+            )
+        )
+        if existing.scalar_one_or_none() is not None:
+            continue
+
+        db.add(
+            FolderPermission(
+                folder_id=folder_id,
+                role="admin",
+                can_read=True,
+                can_download=True,
+                can_upload=True,
+                can_delete=True,
+            )
+        )
+
+    await db.commit()
+    logger.info("[seed] 已为 %d 个文件夹补齐 admin 权限记录", len(folder_ids))

@@ -91,5 +91,8 @@ class FolderPermission(Base):
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     can_read: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     can_download: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # 新增：上传与删除权限（默认 False，需显式授权）
+    can_upload: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    can_delete: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     folder: Mapped["Folder"] = relationship("Folder", back_populates="permissions")
