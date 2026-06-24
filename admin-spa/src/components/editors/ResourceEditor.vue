@@ -207,6 +207,8 @@ async function initVditor() {
     placeholder: '开始编写资源描述...',
     value: form.description,
     cache: { enable: false },
+    // 使用国内可访问的 CDN 加载 Vditor 动态资源（mode 脚本/图标/emoji）
+    cdn: 'https://cdn.jsdelivr.net/npm/vditor@3.10.8/dist',
     toolbar: [
       'headings', 'bold', 'italic', 'strike', '|',
       'link', 'code', 'inline-code', '|',

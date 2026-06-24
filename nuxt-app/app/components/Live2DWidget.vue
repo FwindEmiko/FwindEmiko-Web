@@ -1,48 +1,29 @@
 <template>
   <ClientOnly>
-    <!-- Collapsed dot (mobile only, <768px) -->
-    <button
-      v-if="isMobileCollapsed"
-      class="fixed z-40 live2d-toggle-dot"
-      :style="collapsedStyle"
-      aria-label="展开 Live2D 角色"
-      @click.stop="expandMobile"
-    >
-      <span class="text-lg">🐱</span>
-    </button>
-
-    <div
-      v-else
-      ref="widgetRef"
-      class="fixed z-40 cursor-grab active:cursor-grabbing live2d-widget"
-      :class="{ 'pointer-events-none': isDragging }"
-      :style="positionStyle"
-      @pointerdown="onPointerDown"
-      @click="handleTap"
-    >
-      <canvas ref="canvasRef" class="w-full h-full" />
-
-      <!-- Mobile collapse button -->
-      <button
-        v-if="isMobile"
-        class="live2d-collapse-btn"
-        aria-label="收起 Live2D 角色"
-        @click.stop="collapseMobile"
+    <Transition name="live2d-fade">
+      <div
+        v-if="visible"
+        ref="widgetRef"
+        class="fixed z-40 cursor-grab active:cursor-grabbing live2d-widget"
+        :class="{ 'pointer-events-none': isDragging, 'live2d-mobile-hidden': isMobileChatFull }"
+        :style="positionStyle"
+        @pointerdown="onPointerDown"
+        @click="handleTap"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-      </button>
+        <canvas ref="canvasRef" class="w-full h-full" />
 
-      <Transition name="bubble">
-        <div
-          v-if="live2d.bubbleVisible"
-          class="absolute -top-14 left-1/2 -translate-x-1/2
-                 glass-panel px-3 py-1.5 text-sm text-[var(--text-primary)]
-                 shadow-glass whitespace-nowrap truncate bubble-text"
-        >
-          {{ live2d.bubbleText }}
-        </div>
-      </Transition>
-    </div>
+        <Transition name="bubble">
+          <div
+            v-if="live2d.bubbleVisible"
+            class="absolute -top-14 left-1/2 -translate-x-1/2
+                   glass-panel px-3 py-1.5 text-sm text-[var(--text-primary)]
+                   shadow-glass whitespace-nowrap truncate bubble-text"
+          >
+            {{ live2d.bubbleText }}
+          </div>
+        </Transition>
+      </div>
+    </Transition>
   </ClientOnly>
 </template>
 
@@ -50,6 +31,7 @@
 import { useLive2DStore } from '~~/stores/live2d'
 
 const props = defineProps<{
+  visible?: boolean
   openChat?: () => void
 }>()
 
@@ -58,7 +40,7 @@ const widgetRef = ref<HTMLDivElement>()
 const canvasRef = ref<HTMLCanvasElement>()
 
 const MODEL_PATH = '/live2d/mao/Mao.model3.json'
-// 萌系台词库 (P1-2)
+// 萌系台词库
 const TAP_BUBBLES = [
   '怎么了喵~',
   '别戳啦~',
@@ -82,40 +64,20 @@ let hasDragged = false
 let idleMotionIndex = 0
 let bubbleTimer: ReturnType<typeof setTimeout> | null = null
 
-// Mobile collapse state (P1-4: <768px default collapsed)
 const isMobile = ref(false)
-const isMobileCollapsed = ref(false)
 
 function checkMobile() {
   if (typeof window === 'undefined') return
-  const wasMobile = isMobile.value
   isMobile.value = window.innerWidth < 768
-  // Auto-collapse when entering mobile
-  if (isMobile.value && !wasMobile) {
-    isMobileCollapsed.value = true
-  } else if (!isMobile.value && wasMobile) {
-    isMobileCollapsed.value = false
-  }
 }
 
-const collapsedStyle = computed(() => ({
-  right: '12px',
-  bottom: '16px',
-}))
+// 移动端聊天面板占满屏幕时不显示 Live2D
+const isMobileChatFull = computed(() => isMobile.value && props.visible === true)
 
 const positionStyle = computed(() => ({
   transform: `translate(${translate.x}px, ${translate.y}px)`,
   willChange: isDragging.value ? 'transform' : 'auto',
 }))
-
-function collapseMobile() {
-  isMobileCollapsed.value = true
-}
-
-function expandMobile() {
-  isMobileCollapsed.value = false
-  showBubble('回来啦喵~', 2000)
-}
 
 function showBubble(text: string, duration = 3000) {
   live2d.bubbleText = text
@@ -186,12 +148,9 @@ function fitModel() {
 async function initPixi() {
   if (!canvasRef.value || !widgetRef.value || app || typeof window === 'undefined') return
 
-  // Dynamic client-side imports prevent SSR crashes and ensure Cubism Core is loaded first
   const PIXI = await import('pixi.js')
-  // Cubism 4 only bundle: Mao is a Cubism 4 model (moc3)
   const { Live2DModel } = await import('pixi-live2d-display/cubism4')
 
-  // pixi-live2d-display needs global PIXI.Ticker reference
   ;(window as any).PIXI = PIXI
 
   app = new PIXI.Application({
@@ -208,18 +167,15 @@ async function initPixi() {
     app.stage.addChild(model)
     fitModel()
 
-    // idle motion has Loop=true in the motion file, so it repeats automatically
     idleMotionIndex = Math.floor(Math.random() * 2)
     model.motion('Idle', idleMotionIndex)
 
-    // gaze tracking
     widgetRef.value.addEventListener('pointermove', (e) => {
       if (!model) return
       const rect = widgetRef.value!.getBoundingClientRect()
       model.focus(e.clientX - rect.left, e.clientY - rect.top)
     })
 
-    // speaking lip-sync animation
     let mouthPhase = 0
     app.ticker.add((delta) => {
       if (!model) return
@@ -233,7 +189,6 @@ async function initPixi() {
       }
     })
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error('[Live2D] 加载 Mao 模型失败:', err)
   }
 }
@@ -249,11 +204,19 @@ function destroyPixi() {
   }
 }
 
+// 当 visible 变为 true 时初始化/恢复模型
+watch(() => props.visible, async (val) => {
+  if (val) {
+    await nextTick()
+    if (!app) {
+      initPixi()
+    }
+  }
+})
+
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
-  // delay to ensure ClientOnly has rendered the DOM
-  nextTick(initPixi)
 })
 
 onUnmounted(() => {
@@ -267,10 +230,11 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Live2D 默认在左下角 */
 .live2d-widget {
   width: 140px;
   height: 200px;
-  right: 8px;
+  left: 8px;
   bottom: 12px;
   touch-action: none;
 }
@@ -279,9 +243,14 @@ onUnmounted(() => {
   .live2d-widget {
     width: 220px;
     height: 300px;
-    right: 16px;
+    left: 16px;
     bottom: 16px;
   }
+}
+
+/* 移动端聊天面板占满屏幕时隐藏 Live2D */
+.live2d-mobile-hidden {
+  display: none !important;
 }
 
 .bubble-text {
@@ -294,6 +263,16 @@ onUnmounted(() => {
   }
 }
 
+/* 淡入淡出动画 */
+.live2d-fade-enter-active,
+.live2d-fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+.live2d-fade-enter-from,
+.live2d-fade-leave-to {
+  opacity: 0;
+}
+
 .bubble-enter-active,
 .bubble-leave-active {
   transition: all 0.25s ease;
@@ -302,57 +281,5 @@ onUnmounted(() => {
 .bubble-leave-to {
   opacity: 0;
   transform: translateX(-50%) translateY(10px) scale(0.95);
-}
-
-/* Mobile collapse dot button (P1-4) */
-.live2d-toggle-dot {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(56, 189, 248, 0.2);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.live2d-toggle-dot:hover {
-  transform: scale(1.1);
-  background: rgba(56, 189, 248, 0.3);
-}
-
-/* Collapse button on widget (mobile only) */
-.live2d-collapse-btn {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: rgba(239, 68, 68, 0.85);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s ease;
-}
-
-.live2d-collapse-btn:hover {
-  background: rgba(220, 38, 38, 1);
-  transform: scale(1.1);
-}
-
-@media (min-width: 768px) {
-  .live2d-collapse-btn {
-    display: none;
-  }
 }
 </style>

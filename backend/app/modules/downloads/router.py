@@ -138,6 +138,33 @@ async def list_folder_files(
     )
 
 
+def _resolve_storage_path(storage_path: str) -> str:
+    """解析文件存储路径为绝对路径，兼容新旧两种存储格式。
+
+    新格式: storage_path 相对于 UPLOAD_DIR（如 downloads/3/xxx.txt）
+    旧格式: storage_path 含 UPLOAD_DIR 前缀（如 ./uploads/downloads/3/xxx.txt）
+    """
+    if os.path.isabs(storage_path) and os.path.exists(storage_path):
+        return storage_path
+
+    # 新格式：相对 UPLOAD_DIR 拼接
+    new_path = os.path.join(settings.UPLOAD_DIR, storage_path)
+    if os.path.exists(new_path):
+        return new_path
+
+    # 旧格式：可能已经包含 UPLOAD_DIR，尝试去掉重复前缀后再拼接
+    normalized = storage_path
+    upload_prefix = settings.UPLOAD_DIR.rstrip("/\\")
+    if normalized.startswith(upload_prefix):
+        normalized = normalized[len(upload_prefix):].lstrip("/\\")
+        legacy_path = os.path.join(settings.UPLOAD_DIR, normalized)
+        if os.path.exists(legacy_path):
+            return legacy_path
+
+    # 兜底返回新格式路径（让调用方报 404）
+    return new_path
+
+
 @router.get("/downloads/files/{file_id}/download")
 async def download_file(
     file_id: int,
@@ -159,9 +186,7 @@ async def download_file(
     if file_node.external_url:
         return RedirectResponse(file_node.external_url)
 
-    full_path = file_node.storage_path
-    if not os.path.isabs(full_path):
-        full_path = os.path.join(settings.UPLOAD_DIR, full_path)
+    full_path = _resolve_storage_path(file_node.storage_path)
 
     if not os.path.exists(full_path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="物理文件不存在")
@@ -317,7 +342,6 @@ async def upload_files(
     for upload in files:
         content = await upload.read()
         file_hash = hashlib.sha256(content).hexdigest()
-        ext = os.path.splitext(upload.filename or "")[1]
         file_id = uuid.uuid4().hex
         storage_name = f"{file_id}_{upload.filename or 'unknown'}"
         storage_path = os.path.join(base_dir, storage_name)
@@ -325,13 +349,15 @@ async def upload_files(
         async with aiofiles.open(storage_path, "wb") as f:
             await f.write(content)
 
+        # 存储相对于 UPLOAD_DIR 的路径，避免下载时重复拼接
+        rel_path = os.path.join("downloads", str(folder_id), storage_name)
         file_node = FileNode(
             folder_id=folder_id,
             filename=upload.filename or "unknown",
             file_size=len(content),
             file_hash=file_hash,
             mime_type=upload.content_type or "application/octet-stream",
-            storage_path=storage_path,
+            storage_path=rel_path,
         )
         db.add(file_node)
         await db.flush()
@@ -353,9 +379,7 @@ async def delete_file(
     if file_node is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文件不存在")
 
-    full_path = file_node.storage_path
-    if not os.path.isabs(full_path):
-        full_path = os.path.join(settings.UPLOAD_DIR, full_path)
+    full_path = _resolve_storage_path(file_node.storage_path)
     if os.path.exists(full_path):
         os.remove(full_path)
 

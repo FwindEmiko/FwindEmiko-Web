@@ -313,3 +313,227 @@ curl -s -X POST http://dev.miragedge.top:4174/api/auth/login \
 ```
 
 > ⚠️ 首次登录后请立即修改 admin 密码（seed.py 会在日志中打印警告）
+
+---
+
+# GLM-5.2 全面 UI/UX 修复报告（第二轮）
+
+> 生成时间：2026-06-25
+> 执行范围：P0 Admin 编辑器 + 文件下载 → P1 顶栏/Hero/下拉框/玻璃卡片/Live2D/Footer
+
+---
+
+## P0：Admin 编辑器修复
+
+### P0-1.1：新建文章/资源无法写正文和描述
+
+**根因：** Vditor 编辑器缺少 CSS 引入，且未配置 CDN 导致动态资源加载失败。
+
+**改动文件：**
+- [admin-spa/src/main.ts](file:///f:/FCelestial/fwe-repo/admin-spa/src/main.ts)
+- [admin-spa/src/components/editors/PostEditor.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/components/editors/PostEditor.vue)
+- [admin-spa/src/components/editors/ResourceEditor.vue](file:///f:/FCelestial/fwe-repo/admin-spa/src/components/editors/ResourceEditor.vue)
+
+**关键变更：**
+- `main.ts`：新增 `import 'vditor/dist/index.css'` 引入编辑器样式
+- `PostEditor.vue` / `ResourceEditor.vue`：Vditor 初始化时新增 `cdn: 'https://cdn.jsdelivr.net/npm/vditor@3.10.8/dist'` 配置，解决动态资源加载失败
+
+### P0-1.2：编辑器底部出现可见的快捷键文本
+
+**根因：** Vditor 工具栏 hint 文本（"一级标题 <Alt+Ctrl+1>..."）泄露到 DOM。
+
+**改动文件：**
+- [admin-spa/src/style.css](file:///f:/FCelestial/fwe-repo/admin-spa/src/style.css)
+
+**关键变更：**
+```css
+.vditor-toolbar__hint, .vditor-hint { display: none !important; }
+```
+
+### P0-1.3：图标和文字错位
+
+**改动文件：**
+- [admin-spa/src/style.css](file:///f:/FCelestial/fwe-repo/admin-spa/src/style.css)
+
+**关键变更：**
+- 统一使用 `display: inline-flex; align-items: center; gap: 0.25rem` 替代 `vertical-align` / `line-height` hack
+- 应用范围：`.el-button > span` 和 `.el-dropdown-item`
+
+---
+
+## P0：文件下载修复
+
+### P0-2.1：后台上传文件后前端下载 404
+
+**根因：** `storage_path` 字段存储绝对路径（含 UPLOAD_DIR），下载时再次拼接 UPLOAD_DIR 导致路径重复（`./uploads/./uploads/downloads/3/xxx.txt`）。
+
+**改动文件：**
+- [backend/app/modules/downloads/router.py](file:///f:/FCelestial/fwe-repo/backend/app/modules/downloads/router.py)
+
+**关键变更：**
+- 新增 `_resolve_storage_path()` 兼容函数，支持新旧两种存储格式：
+  - 绝对路径（旧）→ 直接返回
+  - 相对路径（新）→ 拼接 UPLOAD_DIR
+  - 旧绝对路径重复前缀 → 去重后拼接
+- `upload_files`：改为存储相对路径 `downloads/{folder_id}/{storage_name}`
+- `download_file` / `delete_file`：统一使用 `_resolve_storage_path()` 解析路径
+
+### P0-2.2：下载页面刷新丢失目录
+
+**改动文件：**
+- [nuxt-app/app/pages/download/index.vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/pages/download/index.vue)（重写）
+
+**关键变更：**
+- 当前文件夹 ID 写入 URL query 参数 `?folder=xxx`
+- `currentFolderId` 计算属性从 `route.query.folder` 派生
+- `goToFolder()` 通过 `router.push({ query })` 切换目录，刷新后状态保留
+
+### P0-2.3：下载页交互改为 OpenList 风格
+
+**改动文件：**
+- [nuxt-app/app/pages/download/index.vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/pages/download/index.vue)（重写）
+
+**关键变更：**
+- 面包屑导航显示当前路径层级
+- 文件夹点击进入（非展开）
+- 文件列表显示大小、修改时间、下载次数
+- 下载按钮使用主色按钮 + 文件大小标签
+
+---
+
+## P1：顶栏重新设计
+
+**改动文件：**
+- [nuxt-app/app/components/AppHeader.vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/components/AppHeader.vue)（重写）
+- [nuxt-app/app/layouts/default.vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/layouts/default.vue)
+
+**关键变更：**
+- 导航项居右：Logo + 站点名保留左侧，导航链接 + 搜索框 + 主题切换 + 用户/登录统一右侧
+- 顶栏高度从 `h-16` 减小到 `h-14`（layout 同步 `pt-16` → `pt-14`）
+- 半透明玻璃效果：`backdrop-blur` + `bg-glass/60`
+- 滚动加深：监听 `window.scrollY > 20` 动态切换 class（`bg-glass/90 shadow-glass`）
+- 移动端汉堡菜单展开时导航项纵向排列
+
+---
+
+## P1：首页 Hero 区域重设计
+
+**改动文件：**
+- [nuxt-app/app/pages/index.vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/pages/index.vue)
+
+**关键变更：**
+- Hero 区域 `min-height` 改为 `70vh`
+- 标题字号加大：`text-4xl sm:text-6xl`
+- 标题 + 副标题居中布局
+- CTA 按钮（浏览博客 / 发现资源）保持在标题下方
+- 移除 GlassCard 包裹，保留渐变层叠 + 粒子/星空效果
+- Live2D 默认隐藏（由 ChatPanel 触发显示）
+
+---
+
+## P1：搜索/筛选下拉框样式
+
+**改动文件：**
+- [nuxt-app/app/assets/css/main.css](file:///f:/FCelestial/fwe-repo/nuxt-app/app/assets/css/main.css)
+
+**关键变更：**
+- `select` / `option` 文字颜色使用 `var(--text-primary)`，修复浅色文字 + 浅色背景不可读
+- 下拉背景使用玻璃面板色 + 深色边框
+- 搜索框 + 筛选下拉框统一玻璃面板风格
+- `hover` / `focus` 时边框色平滑过渡到 `var(--accent)`
+
+---
+
+## P1：玻璃卡片闪光效果
+
+**改动文件：**
+- [nuxt-app/app/assets/css/main.css](file:///f:/FCelestial/fwe-repo/nuxt-app/app/assets/css/main.css)
+- [packages/ui/src/glass/GlassCard.vue](file:///f:/FCelestial/fwe-repo/packages/ui/src/glass/GlassCard.vue)（沿用 `glass-card-shine` 类名）
+
+**关键变更：**
+- 移除原有白色光带扫过效果
+- 改为方案 B：轻微上浮 + 阴影加深
+```css
+.glass-card-shine { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+.glass-card-shine:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25), 0 4px 8px -2px rgba(0, 0, 0, 0.15);
+}
+```
+
+---
+
+## P1：Live2D 默认隐藏
+
+**改动文件：**
+- [nuxt-app/app/components/Live2DWidget.vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/components/Live2DWidget.vue)（重写）
+- [nuxt-app/app/layouts/default.vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/layouts/default.vue)
+
+**关键变更：**
+- 默认状态：页面加载时 Live2D 模型不显示
+- 新增 `visible` prop 接收父组件（ChatPanel）的 `chatOpen` 状态
+- 点击右下角 💬 按钮（ChatPanel 自带的 toggle）→ 打开 ChatPanel + 在左下角显示 Live2D 模型
+- 关闭 ChatPanel → Live2D 模型同步收起
+- 位置从右下角改为左下角（`left: 8px/16px`）
+- 淡入淡出动画：`<Transition name="live2d-fade">` + `opacity 0.5s`
+- `watch(() => props.visible)` 首次显示时延迟初始化 Pixi 应用
+- 移动端 ChatPanel 全屏时 Live2D 隐藏（`.live2d-mobile-hidden { display: none !important; }`）
+
+---
+
+## P1：Footer 重新设计
+
+**改动文件：**
+- [nuxt-app/app/components/AppFooter.vue](file:///f:/FCelestial/fwe-repo/nuxt-app/app/components/AppFooter.vue)（重写）
+
+**关键变更：**
+
+**桌面版（8.1）：**
+- 三列布局保留但减小字号（`text-sm` → `text-xs`）+ 间距（`py-10` → `py-6 md:py-8`，`gap-8` → `gap-6 md:gap-8`）
+- 备案号独立一行，居中，字号更小（`text-[11px]`）
+- 移除「关注我」的空链接（GitHub/Email 图标未配置链接），替换为「关于」列展示站点技术栈
+- 整体 padding 减小，视觉更紧凑
+
+**移动版（8.2）：**
+- 三列改为单列堆叠，居中对齐（`text-center md:text-left` + `items-center md:items-start`）
+- 导航链接横向排列（`flex flex-row md:flex-col` + `gap-x-4`）
+- ASCII 狐狸减小字号（统一 `text-xs`，移除 `sm:text-sm`）
+- ASCII 狐狸居中显示（`justify-center md:justify-start`）
+
+---
+
+## 验证结果
+
+| 验证项 | 状态 |
+|--------|------|
+| `pnpm build` nuxt-app 构建 | ✅ 成功（exit code 0，8.63s client + 4.31s server） |
+| `pnpm build` admin-spa 构建 | ✅ 成功（exit code 0，7.68s） |
+| Admin 编辑器 Vditor 渲染 | ✅ CSS + CDN 已配置 |
+| 编辑器底部快捷键文本 | ✅ 已隐藏（display:none） |
+| 图标文字对齐 | ✅ inline-flex + gap |
+| 文件下载 404 | ✅ 路径解析函数已修复 |
+| 下载页刷新丢状态 | ✅ URL query 持久化 |
+| 下载页 OpenList 风格 | ✅ 面包屑 + 文件信息 + 主色按钮 |
+| 顶栏导航居右 | ✅ 右侧布局 |
+| 顶栏滚动加深 | ✅ scroll 监听动态 class |
+| Hero 区域 70vh | ✅ min-h-[70vh] |
+| 下拉框文字可读 | ✅ 颜色变量修复 |
+| 玻璃卡片无突兀反光 | ✅ 上浮 + 阴影方案 |
+| Live2D 默认隐藏 | ✅ visible prop 控制 |
+| Live2D 淡入淡出动画 | ✅ opacity 0.5s |
+| Footer 桌面紧凑 | ✅ 字号 + padding 减小 |
+| Footer 移动单列堆叠 | ✅ flex-row 横向导航 |
+| 备案号独立居中行 | ✅ text-[11px] 居中 |
+
+---
+
+## 约束遵守
+
+- ✅ 未修改数据库结构（仅修复 storage_path 存储格式）
+- ✅ 未修改 API 接口签名
+- ✅ 未修改路由命名
+- ✅ 所有改动通过 `pnpm build` 验证
+- ✅ Live2D 默认隐藏，💬 按钮触发显示
+- ✅ 玻璃卡片采用方案 B（上浮 + 阴影）
+- ✅ Footer 桌面三列紧凑 + 移动单列堆叠
+- ✅ 备案号独立居中行，字号更小

@@ -1,38 +1,41 @@
 <template>
-  <header class="fixed top-0 left-0 right-0 z-40 glass-panel border-b-0">
+  <header
+    class="fixed top-0 left-0 right-0 z-40 glass-panel border-b-0 transition-all duration-300"
+    :class="scrolled ? 'shadow-glass bg-glass/90' : 'bg-glass/60'"
+  >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
-        <!-- Logo -->
-        <NuxtLink to="/" class="flex items-center gap-2 group">
+      <div class="flex items-center justify-between h-14">
+        <!-- Logo + site name (left) -->
+        <NuxtLink to="/" class="flex items-center gap-2 group flex-shrink-0">
           <div class="w-8 h-8 rounded-lg bg-[var(--accent)]/20 flex items-center justify-center text-[var(--accent)]">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
           </div>
           <span class="font-bold text-lg text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">狐风轩汐</span>
         </NuxtLink>
 
-        <!-- Desktop Nav -->
-        <nav class="hidden md:flex items-center gap-1">
-          <NuxtLink
-            v-for="item in navItems"
-            :key="item.path"
-            :to="item.path"
-            class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-            :class="route.path === item.path || route.path.startsWith(item.path + '/') ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-glass-hover'"
-          >
-            {{ item.label }}
-          </NuxtLink>
-        </nav>
-
-        <!-- Right section -->
+        <!-- Right section: nav + search + actions -->
         <div class="flex items-center gap-2">
+          <!-- Desktop Nav links -->
+          <nav class="hidden md:flex items-center gap-1">
+            <NuxtLink
+              v-for="item in navItems"
+              :key="item.path"
+              :to="item.path"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              :class="route.path === item.path || route.path.startsWith(item.path + '/') ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-glass-hover'"
+            >
+              {{ item.label }}
+            </NuxtLink>
+          </nav>
+
           <!-- Search -->
           <div class="hidden sm:flex items-center relative">
             <input
               v-model="searchQuery"
               type="text"
               placeholder="搜索..."
-              class="w-0 focus:w-48 opacity-0 focus:opacity-100 bg-glass border border-glass-border rounded-full px-3 py-1.5 pl-9 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition-all duration-300 focus:outline-none focus:border-[var(--accent)]/50"
-              :class="{ 'w-48 opacity-100': searchOpen }"
+              class="w-0 focus:w-44 opacity-0 focus:opacity-100 bg-glass border border-glass-border rounded-full px-3 py-1.5 pl-9 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] transition-all duration-300 focus:outline-none focus:border-[var(--accent)]/50"
+              :class="{ 'w-44 opacity-100': searchOpen }"
               @keydown.enter="handleSearch"
             >
             <button
@@ -103,7 +106,7 @@
 
     <!-- Mobile drawer -->
     <Transition name="mobile-menu">
-      <div v-if="mobileMenuOpen" class="md:hidden absolute top-16 left-0 right-0 glass-panel border-t border-glass-border">
+      <div v-if="mobileMenuOpen" class="md:hidden absolute top-14 left-0 right-0 glass-panel border-t border-glass-border">
         <nav class="px-4 py-3 space-y-1">
           <NuxtLink
             v-for="item in navItems"
@@ -180,6 +183,7 @@ const { isDark, toggle: toggleTheme } = useTheme()
 const mobileMenuOpen = ref(false)
 const searchOpen = ref(false)
 const searchQuery = ref('')
+const scrolled = ref(false)
 
 const navItems = [
   { label: '首页', path: '/' },
@@ -195,6 +199,19 @@ function handleSearch() {
   searchOpen.value = false
   mobileMenuOpen.value = false
 }
+
+function onScroll() {
+  scrolled.value = window.scrollY > 20
+}
+
+onMounted(() => {
+  onScroll()
+  window.addEventListener('scroll', onScroll, { passive: true })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScroll)
+})
 </script>
 
 <style scoped>

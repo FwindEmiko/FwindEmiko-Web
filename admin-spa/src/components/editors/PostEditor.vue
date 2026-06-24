@@ -129,6 +129,8 @@ async function initVditor() {
     placeholder: '开始写作...',
     value: form.content,
     cache: { enable: false },
+    // 使用国内可访问的 CDN 加载 Vditor 动态资源（mode 脚本/图标/emoji）
+    cdn: 'https://cdn.jsdelivr.net/npm/vditor@3.10.8/dist',
     toolbar: [
       'headings',
       'bold',

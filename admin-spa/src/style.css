@@ -67,3 +67,30 @@ body {
 .vditor-toolbar {
   border-bottom-color: var(--border) !important;
 }
+
+/* 隐藏 Vditor 底部泄露的快捷键提示文本（"一级标题 <Alt+Ctrl+1>..."） */
+.vditor-toolbar__hint,
+.vditor-hint {
+  display: none !important;
+}
+
+/* Vditor 工具栏按钮提示 tooltip 不应溢出为可见文本 */
+.vditor-toolbar button {
+  overflow: visible;
+}
+
+/* 统一图标 + 文字对齐：使用 flex 替代 vertical-align hack */
+.el-button > span,
+.el-dropdown-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* lucide 图标与文字垂直居中 */
+.el-button svg,
+.el-tag svg,
+.el-dropdown-item svg {
+  flex-shrink: 0;
+  vertical-align: middle;
+}

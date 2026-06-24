@@ -11,7 +11,7 @@
     </div>
 
     <!-- Hero -->
-    <section class="relative min-h-[480px] flex items-center justify-center overflow-hidden">
+    <section class="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
       <!-- Starfield gradient background: 紫→蓝→青 -->
       <div class="absolute inset-0 bg-gradient-to-br from-purple-600/20 via-blue-500/15 to-cyan-400/20" />
 
@@ -46,41 +46,37 @@
       </div>
 
       <div class="relative z-10 max-w-4xl mx-auto px-4 text-center">
-        <GlassCard class="inline-block glass-card-shine">
-          <div class="flex flex-col items-center">
-            <!-- Pixel art fox avatar -->
-            <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500/30 via-[var(--accent)]/30 to-cyan-400/30 flex items-center justify-center mb-4 border border-white/10">
-              <!-- Pixel-style fox SVG -->
-              <svg class="text-[var(--accent)]" xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 10 L6 4 L9 8 L15 8 L18 4 L21 10 L21 16 L18 20 L15 18 L9 18 L6 20 L3 16 Z" />
-                <circle cx="9" cy="13" r="1" fill="currentColor" />
-                <circle cx="15" cy="13" r="1" fill="currentColor" />
-                <path d="M11 16 L12 17 L13 16" />
-              </svg>
-            </div>
-            <h1 class="text-3xl sm:text-5xl font-bold text-[var(--text-primary)] mb-3 font-anime">
-              狐风轩汐の小屋
-            </h1>
-            <!-- Pixel decorations around subtitle -->
-            <p class="text-lg text-[var(--text-secondary)] mb-6 flex items-center gap-2">
-              <span class="text-pink-400 text-sm" aria-hidden="true">◆</span>
-              <span>代码 · 游戏 · 创作</span>
-              <span class="text-cyan-400 text-sm" aria-hidden="true">◆</span>
-            </p>
-            <div class="flex flex-wrap items-center justify-center gap-3">
-              <NuxtLink to="/blog" class="px-6 py-2.5 rounded-full bg-[var(--accent)] text-white font-medium hover:bg-[var(--accent-hover)] transition-colors">
-                浏览博客
-              </NuxtLink>
-              <NuxtLink to="/resources" class="px-6 py-2.5 rounded-full glass-panel text-[var(--text-primary)] font-medium hover:bg-glass-hover transition-colors">
-                发现资源
-              </NuxtLink>
-            </div>
-            <!-- Terminal style decoration -->
-            <div class="mt-6 terminal-text text-xs opacity-70">
-              <span class="text-terminal">$</span> echo "Welcome to FwindEmiko's world"
-            </div>
-          </div>
-        </GlassCard>
+        <!-- Pixel art fox avatar -->
+        <div class="w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-500/30 via-[var(--accent)]/30 to-cyan-400/30 flex items-center justify-center mb-6 border border-white/10 mx-auto">
+          <!-- Pixel-style fox SVG -->
+          <svg class="text-[var(--accent)]" xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 10 L6 4 L9 8 L15 8 L18 4 L21 10 L21 16 L18 20 L15 18 L9 18 L6 20 L3 16 Z" />
+            <circle cx="9" cy="13" r="1" fill="currentColor" />
+            <circle cx="15" cy="13" r="1" fill="currentColor" />
+            <path d="M11 16 L12 17 L13 16" />
+          </svg>
+        </div>
+        <h1 class="text-4xl sm:text-6xl font-bold text-[var(--text-primary)] mb-4 font-anime">
+          狐风轩汐の小屋
+        </h1>
+        <!-- Pixel decorations around subtitle -->
+        <p class="text-lg sm:text-xl text-[var(--text-secondary)] mb-8 flex items-center justify-center gap-2">
+          <span class="text-pink-400 text-sm" aria-hidden="true">◆</span>
+          <span>代码 · 游戏 · 创作</span>
+          <span class="text-cyan-400 text-sm" aria-hidden="true">◆</span>
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-4">
+          <NuxtLink to="/blog" class="px-7 py-3 rounded-full bg-[var(--accent)] text-white font-medium hover:bg-[var(--accent-hover)] transition-colors shadow-lg shadow-[var(--accent)]/20">
+            浏览博客
+          </NuxtLink>
+          <NuxtLink to="/resources" class="px-7 py-3 rounded-full glass-panel text-[var(--text-primary)] font-medium hover:bg-glass-hover transition-colors">
+            发现资源
+          </NuxtLink>
+        </div>
+        <!-- Terminal style decoration -->
+        <div class="mt-8 terminal-text text-xs opacity-70">
+          <span class="text-terminal">$</span> echo "Welcome to FwindEmiko's world"
+        </div>
       </div>
     </section>
 
@@ -134,7 +130,6 @@
 
 <script setup lang="ts">
 import { blogApi, resourceApi } from '@windemiko/shared'
-import { GlassCard } from '@windemiko/ui'
 
 useSeoMeta({
   title: '首页',
