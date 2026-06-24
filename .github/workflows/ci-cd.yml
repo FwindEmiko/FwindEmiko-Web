@@ -68,11 +68,11 @@ jobs:
             echo "=== Pulling latest code ==="
             git pull origin main
             echo "=== Building & starting containers ==="
-            docker compose -f docker-compose.prod.yml up -d --build
+            docker-compose -f docker-compose.prod.yml up -d --build
             echo "=== Cleanup old images ==="
             docker image prune -f
             echo "=== Status ==="
-            docker compose -f docker-compose.prod.yml ps
+            docker-compose -f docker-compose.prod.yml ps
       - name: Teardown WireGuard
         if: always()
         run: sudo wg-quick down github-actions 2>/dev/null || true
