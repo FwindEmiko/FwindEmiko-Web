@@ -1,0 +1,40 @@
+[project]
+name = "windemiko-backend"
+version = "0.1.0"
+description = "FastAPI backend for WindEmiko Portal"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.115",
+    "uvicorn[standard]>=0.34",
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite>=0.20",
+    "aiomysql>=0.2",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    "python-jose[cryptography]>=3.3",
+    "passlib[bcrypt]>=1.7",
+    "bcrypt<4.1",
+    "python-multipart>=0.0.18",
+    "httpx>=0.28",
+    "pydantic-settings>=2.7",
+    "aiofiles>=24.1",
+    "python-dotenv>=1.0",
+    "markdown>=3.7",
+    "Pillow>=11.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.28",
+]
+mysql = ["aiomysql>=0.2"]
+postgresql = ["asyncpg>=0.30"]
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

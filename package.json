@@ -1,0 +1,14 @@
+{
+  "name": "fwindemiko-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter nuxt-app dev",
+    "build": "pnpm --filter nuxt-app build",
+    "generate": "pnpm --filter nuxt-app generate"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

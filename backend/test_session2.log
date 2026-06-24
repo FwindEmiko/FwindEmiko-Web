@@ -1,0 +1,607 @@
+﻿2026-06-24 02:16:50,425 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-24 02:16:50,428 INFO sqlalchemy.engine.Engine SELECT users.id, users.username, users.email, users.password_hash, users.display_name, users.avatar_url, users.bio, users.role, users.is_active, users.is_verified, users.created_at, users.updated_at 
+FROM users 
+WHERE users.username = ?
+2026-06-24 02:16:50,428 INFO sqlalchemy.engine.Engine [generated in 0.00020s] ('admin_user',)
+2026-06-24 02:16:50,429 INFO sqlalchemy.engine.Engine SELECT users.id, users.username, users.email, users.password_hash, users.display_name, users.avatar_url, users.bio, users.role, users.is_active, users.is_verified, users.created_at, users.updated_at 
+FROM users 
+WHERE users.username = ?
+2026-06-24 02:16:50,429 INFO sqlalchemy.engine.Engine [cached since 0.00175s ago] ('author_user',)
+2026-06-24 02:16:50,430 INFO sqlalchemy.engine.Engine SELECT users.id, users.username, users.email, users.password_hash, users.display_name, users.avatar_url, users.bio, users.role, users.is_active, users.is_verified, users.created_at, users.updated_at 
+FROM users 
+WHERE users.username = ?
+2026-06-24 02:16:50,430 INFO sqlalchemy.engine.Engine [cached since 0.002659s ago] ('member_user',)
+2026-06-24 02:16:50,432 INFO sqlalchemy.engine.Engine COMMIT
+register admin: 422 用户名或邮箱已存在
+register author: 422 用户名或邮箱已存在
+register member: 422 用户名或邮箱已存在
+login admin: ok
+login author: ok
+login member: ok
+category_id=1, tag_id=1
+
+=== 创建文章 ===
+curl command:
+curl -X POST http://localhost:8002/api/posts -H "Authorization: Bearer <author_token>" -H "Content-Type: application/json" -d "{\"title\": \"Session2 测试文章\", \"content\": \"# 标题\\n\\n这是正文。\", \"status\": \"published\", \"category_id\": 1, \"tags\": [1]}"
+status: 200
+response: {
+  "code": 0,
+  "data": {
+    "id": 4,
+    "title": "Session2 测试文章",
+    "slug": "session2-测试文章",
+    "summary": "# 标题\n\n这是正文。",
+    "cover_url": null,
+    "status": "published",
+    "is_pinned": false,
+    "view_count": 0,
+    "published_at": "2026-06-23T18:16:53.309565+00:00",
+    "created_at": "2026-06-23T18:16:53.310724+00:00",
+    "updated_at": "2026-06-23T18:16:53.310726+00:00",
+    "author": {
+      "id": 3,
+      "username": "author_user",
+      "display_name": null
+    },
+    "category": {
+      "id": 1,
+      "name": "技术笔记",
+      "slug": "tech"
+    },
+    "tags": [
+      {
+        "id": 1,
+        "name": "FastAPI",
+        "slug": "fastapi"
+      }
+    ],
+    "content_md": "# 标题\n\n这是正文。",
+    "content_html": "<h1 id=\"_1\">标题</h1>\n<p>这是正文。</p>"
+  },
+  "message": "ok"
+}
+
+=== 编辑文章 ===
+curl command:
+curl -X PUT http://localhost:8002/api/posts/4 -H "Authorization: Bearer <author_token>" -H "Content-Type: application/json" -d "{\"title\": \"Session2 已更新\"}"
+status: 200
+response: {
+  "code": 0,
+  "data": {
+    "id": 4,
+    "title": "Session2 已更新",
+    "slug": "session2-已更新-2",
+    "summary": "# 标题\n\n这是正文。",
+    "cover_url": null,
+    "status": "published",
+    "is_pinned": false,
+    "view_count": 0,
+    "published_at": "2026-06-23T18:16:53.309565",
+    "created_at": "2026-06-23T18:16:53.310724",
+    "updated_at": "2026-06-23T18:16:53.385489+00:00",
+    "author": {
+      "id": 3,
+      "username": "author_user",
+      "display_name": null
+    },
+    "category": {
+      "id": 1,
+      "name": "技术笔记",
+      "slug": "tech"
+    },
+    "tags": [
+      {
+        "id": 1,
+        "name": "FastAPI",
+        "slug": "fastapi"
+      }
+    ],
+    "content_md": "# 标题\n\n这是正文。",
+    "content_html": "<h1 id=\"_1\">标题</h1>\n<p>这是正文。</p>"
+  },
+  "message": "ok"
+}
+
+=== 文章搜索列表 ===
+curl command:
+curl "http://localhost:8002/api/posts?category=tech&tag=fastapi&q=Session2"
+status: 200
+response: {
+  "items": [
+    {
+      "id": 4,
+      "title": "Session2 已更新",
+      "slug": "session2-已更新-2",
+      "summary": "# 标题\n\n这是正文。",
+      "cover_url": null,
+      "status": "published",
+      "is_pinned": false,
+      "view_count": 0,
+      "published_at": "2026-06-23T18:16:53.309565",
+      "created_at": "2026-06-23T18:16:53.310724",
+      "updated_at": "2026-06-23T18:16:53.385489",
+      "author": {
+        "id": 3,
+        "username": "author_user",
+        "display_name": null
+      },
+      "category": {
+        "id": 1,
+        "name": "技术笔记",
+        "slug": "tech"
+      },
+      "tags": [
+        {
+          "id": 1,
+          "name": "FastAPI",
+          "slug": "fastapi"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Session2 测试文章X",
+      "slug": "session2-测试文章x",
+      "summary": "# 标题\n\n这是正文。",
+      "cover_url": null,
+      "status": "published",
+      "is_pinned": false,
+      "view_count": 2,
+      "published_at": "2026-06-23T18:06:23.145978",
+      "created_at": "2026-06-23T18:06:23.148232",
+      "updated_at": "2026-06-23T18:07:52.522811",
+      "author": {
+        "id": 3,
+        "username": "author_user",
+        "display_name": null
+      },
+      "category": {
+        "id": 1,
+        "name": "技术笔记",
+        "slug": "tech"
+      },
+      "tags": [
+        {
+          "id": 1,
+          "name": "FastAPI",
+          "slug": "fastapi"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Session2 已更新",
+      "slug": "session2-已更新",
+
+=== 文章详情 ===
+curl command:
+curl "http://localhost:8002/api/posts/session2-已更新-2"
+status: 200
+response: {
+  "code": 0,
+  "data": {
+    "post": {
+      "id": 4,
+      "title": "Session2 已更新",
+      "slug": "session2-已更新-2",
+      "summary": "# 标题\n\n这是正文。",
+      "cover_url": null,
+      "status": "published",
+      "is_pinned": false,
+      "view_count": 1,
+      "published_at": "2026-06-23T18:16:53.309565",
+      "created_at": "2026-06-23T18:16:53.310724",
+      "updated_at": "2026-06-23T18:16:53.448878+00:00",
+      "author": {
+        "id": 3,
+        "username": "author_user",
+        "display_name": null
+      },
+      "category": {
+        "id": 1,
+        "name": "技术笔记",
+        "slug": "tech"
+      },
+      "tags": [
+        {
+          "id": 1,
+          "name": "FastAPI",
+          "slug": "fastapi"
+        }
+      ],
+      "content_md": "# 标题\n\n这是正文。",
+      "content_html": "<h1 id=\"_1\">标题</h1>\n<p>这是正文。</p>"
+    },
+    "prev_post": null,
+    "next_post": {
+      "id": 1,
+      "title": "Session2 测试文章3",
+      "slug": "session2-测试文章3"
+    }
+  },
+  "message": "ok"
+}
+
+=== 删除文章 ===
+curl command:
+curl -X DELETE http://localhost:8002/api/posts/4 -H "Authorization: Bearer <admin_token>"
+status: 200
+response: {
+  "code": 0,
+  "data": null,
+  "message": "ok"
+}
+
+=== 创建资源 ===
+curl command:
+curl -X POST http://localhost:8002/api/resources -H "Authorization: Bearer <author_token>" -H "Content-Type: application/json" -d "{\"title\": \"SkyIslandHome-20260623181653\", \"type\": \"plugin\", \"game_versions\": [\"1.21.11\"], \"loaders\": [\"Paper\"], \"description\": \"空岛家园系统\"}"
+status: 200
+response: {
+  "code": 0,
+  "data": {
+    "id": 8,
+    "title": "SkyIslandHome-20260623181653",
+    "slug": "skyislandhome-20260623181653",
+    "description": "空岛家园系统",
+    "type": "plugin",
+    "game_versions": [
+      "1.21.11"
+    ],
+    "loaders": [
+      "Paper"
+    ],
+    "icon_url": null,
+    "cover_url": null,
+    "download_count": 0,
+    "status": "draft",
+    "created_at": "2026-06-23T18:16:53.527826+00:00",
+    "updated_at": "2026-06-23T18:16:53.527830+00:00",
+    "versions": [],
+    "screenshots": []
+  },
+  "message": "ok"
+}
+
+=== 添加版本 ===
+curl command:
+curl -X POST http://localhost:8002/api/resources/8/versions -H "Authorization: Bearer <author_token>" -H "Content-Type: application/json" -d "{\"version_string\": \"v1.2.0\", \"external_url\": \"https://example.com/download\"}"
+status: 200
+response: {
+  "code": 0,
+  "data": {
+    "id": 5,
+    "resource_id": 8,
+    "version_string": "v1.2.0",
+    "changelog": null,
+    "file_url": null,
+    "external_url": "https://example.com/download",
+    "file_size": null,
+    "file_hash": null,
+    "downloads": 0,
+    "is_prerelease": false,
+    "created_at": "2026-06-23T18:16:53.603099"
+  },
+  "message": "ok"
+}
+
+=== 上传截图 ===
+curl command:
+curl -X POST http://localhost:8002/api/resources/8/screenshots -H "Authorization: Bearer <author_token>" -F "files=@test.png"
+status: 200
+response: {
+  "code": 0,
+  "data": [
+    {
+      "id": 5,
+      "resource_id": 8,
+      "image_url": "/uploads/screenshots/8/32304bf129164d49b2651cb57a818b91.png",
+      "thumb_url": "/uploads/screenshots/8/thumb_32304bf129164d49b2651cb57a818b91.png",
+      "caption": null,
+      "sort_order": 0
+    }
+  ],
+  "message": "ok"
+}
+
+=== 资源详情 ===
+curl command:
+curl "http://localhost:8002/api/resources/skyislandhome-20260623181653"
+status: 200
+response: {
+  "code": 0,
+  "data": {
+    "id": 8,
+    "title": "SkyIslandHome-20260623181653",
+    "slug": "skyislandhome-20260623181653",
+    "description": "空岛家园系统",
+    "type": "plugin",
+    "game_versions": [
+      "1.21.11"
+    ],
+    "loaders": [
+      "Paper"
+    ],
+    "icon_url": null,
+    "cover_url": null,
+    "download_count": 0,
+    "status": "published",
+    "created_at": "2026-06-23T18:16:53.527826",
+    "updated_at": "2026-06-23T18:16:53.557037",
+    "versions": [
+      {
+        "id": 5,
+        "resource_id": 8,
+        "version_string": "v1.2.0",
+        "changelog": null,
+        "file_url": null,
+        "external_url": "https://example.com/download",
+        "file_size": null,
+        "file_hash": null,
+        "downloads": 0,
+        "is_prerelease": false,
+        "created_at": "2026-06-23T18:16:53.603099"
+      }
+    ],
+    "screenshots": [
+      {
+        "id": 5,
+        "resource_id": 8,
+        "image_url": "/uploads/screenshots/8/32304bf129164d49b2651cb57a818b91.png",
+        "thumb_url": "/uploads/screenshots/8/thumb_32304bf129164d49b2651cb57a818b91.png",
+        "caption": null,
+        "sort_order": 0
+      }
+    ]
+  },
+  "message": "ok"
+}
+
+=== 创建公开文件夹 ===
+curl command:
+curl -X POST http://localhost:8002/api/downloads/folders -H "Authorization: Bearer <admin_token>" -H "Content-Type: application/json" -d "{\"name\": \"公开资源\", \"slug\": \"public-20260623181653\", \"is_visible\": true}"
+status: 200
+response: {
+  "code": 0,
+  "data": {
+    "id": 7,
+    "name": "公开资源",
+    "slug": "public-20260623181653",
+    "description": null,
+    "is_visible": true,
+    "sort_order": 0,
+    "children": []
+  },
+  "message": "ok"
+}
+
+=== 创建受限文件夹 ===
+curl command:
+curl -X POST http://localhost:8002/api/downloads/folders -H "Authorization: Bearer <admin_token>" -H "Content-Type: application/json" -d "{\"name\": \"VIP资源\", \"slug\": \"vip-20260623181653\", \"is_visible\": true, \"permission_rules\": [{\"role\": \"guest\", \"can_read\": false, \"can_download\": false}, {\"role\": \"member\", \"can_read\": true, \"can_download\": true}]}"
+status: 200
+response: {
+  "code": 0,
+  "data": {
+    "id": 8,
+    "name": "VIP资源",
+    "slug": "vip-20260623181653",
+    "description": null,
+    "is_visible": true,
+    "sort_order": 0,
+    "children": []
+  },
+  "message": "ok"
+}
+
+=== 未登录文件夹树 ===
+curl command:
+curl "http://localhost:8002/api/downloads/folders"
+status: 200
+response: {
+  "code": 0,
+  "data": [
+    {
+      "id": 1,
+      "name": "公开资源",
+      "slug": "public-20260623180507",
+      "description": null,
+      "is_visible": true,
+      "sort_order": 0,
+      "children": []
+    },
+    {
+      "id": 3,
+      "name": "公开资源",
+      "slug": "public-20260623180838",
+      "description": null,
+      "is_visible": true,
+      "sort_order": 0,
+      "children": []
+    },
+    {
+      "id": 5,
+      "name": "公开资源",
+      "slug": "public-20260623181326",
+      "description": null,
+      "is_visible": true,
+      "sort_order": 0,
+      "children": []
+    },
+    {
+      "id": 7,
+      "name": "公开资源",
+      "slug": "public-20260623181653",
+      "description": null,
+      "is_visible": true,
+      "sort_order": 0,
+      "children": []
+    }
+  ],
+  "message": "ok"
+}
+
+=== member 文件夹树 ===
+curl command:
+curl "http://localhost:8002/api/downloads/folders" -H "Authorization: Bearer <member_token>"
+status: 200
+response: {
+  "code": 0,
+  "data": [
+    {
+      "id": 1,
+      "name": "公开资源",
+      "slug": "public-20260623180507",
+      "description": null,
+      "is_visible": true,
+      "sort_order": 0,
+      "children": []
+    },
+    {
+      "id": 2,
+      "name": "VIP资源",
+      "slug": "vip-20260623180507",
+      "description": null,
+      "is_visible": true,
+      "sort_order": 0,
+      "children": []
+    },
+    {
+      "id": 3,
+      "name": "公开资源",
+      "slug": "public-20260623180838",
+      "description": null,
+      "is_visible": true,
+      "sort_order": 0,
+      "children": []
+    },
+    {
+      "id": 4,
+      "name": "VIP资源",
+      "slug": "vip-20260623180838",
+      "description": null,
+      "is_visible": true,
+      "sort_order": 0,
+      "children": []
+    },
+    {
+      "id": 5,
+      "name": "公开资源",
+      "slug": "public-20260623181326",
+      "description": null,
+      "is_visible": true,
+      "sort_order": 0,
+      "children": []
+    },
+    {
+      "id": 6,
+      "name": "VIP资源",
+      "slug": "vip-20260623181326",
+      "description": null,
+      "is_visible": true,
+      "sort_order": 0,
+      "children": []
+    },
+    {
+      "id": 7,
+      "name": "公开资源",
+      "slug": "public-20260623181653",
+      "description": null,
+      "is_visible": true,
+      "sort_order": 0,
+      "children": []
+    },
+    {
+      "id": 8,
+      "name": "VIP资源",
+      "slug": "vip-20260623181653",
+      "description": null,
+      "is_visible": true,
+      "sort_order": 0,
+      "children": []
+
+
+=== 上传文件 ===
+curl command:
+curl -X POST "http://localhost:8002/api/downloads/files?folder_id=7" -H "Authorization: Bearer <admin_token>" -F "files=@test_download.txt"
+status: 200
+response: {
+  "code": 0,
+  "data": [
+    {
+      "id": 3,
+      "filename": "test_download.txt",
+      "display_name": null,
+      "file_size": 15,
+      "mime_type": "text/plain",
+      "download_count": 0,
+      "has_external": false,
+      "created_at": "2026-06-23T18:16:53.882405+00:00"
+    }
+  ],
+  "message": "ok"
+}
+
+=== 创建会话 ===
+curl command:
+curl -X POST http://localhost:8002/api/chat/sessions -H "Authorization: Bearer <member_token>" -H "Content-Type: application/json" -d "{}"
+status: 200
+response: {
+  "code": 0,
+  "data": {
+    "id": 3,
+    "user_id": 4,
+    "title": "新对话",
+    "model": "ollama",
+    "message_count": 0,
+    "created_at": "2026-06-23T18:16:53.926742",
+    "updated_at": "2026-06-23T18:16:53.926744"
+  },
+  "message": "ok"
+}
+
+=== SSE 发送消息 (session 3) ===
+curl -N -X POST http://localhost:8002/api/chat/sessions/3/messages -H "Authorization: Bearer <member_token>" -H "Content-Type: application/json" -d "{\"content\": \"你好\"}"
+SSE: data: {"type": "chunk", "content": "\u8fd9\u662f\u4e00\u4e2a\u5360\u4f4d\u56de\u590d\u3002AI \u5bf9\u8bdd\u529f\u80fd\u5c1a\u672a\u63a5\u5165\u771f\u5b9e LLM\uff0c\u8bf7\u8054\u7cfb\u661f\u7396\u5b8c\u6210\u90e8\u7f72\u3002"}
+SSE: 
+SSE: data: {"type": "done", "message_id": 6}
+SSE: 
+
+=== 查看历史 ===
+curl command:
+curl http://localhost:8002/api/chat/sessions/3/messages -H "Authorization: Bearer <member_token>"
+status: 200
+response: {
+  "code": 0,
+  "data": [
+    {
+      "id": 5,
+      "session_id": 3,
+      "role": "user",
+      "content": "你好",
+      "created_at": "2026-06-23T18:16:53.986167"
+    },
+    {
+      "id": 6,
+      "session_id": 3,
+      "role": "assistant",
+      "content": "这是一个占位回复。AI 对话功能尚未接入真实 LLM，请联系星玖完成部署。",
+      "created_at": "2026-06-23T18:16:54.019889"
+    }
+  ],
+  "message": "ok"
+}
+
+=== 查看配额 ===
+curl command:
+curl http://localhost:8002/api/chat/quota -H "Authorization: Bearer <member_token>"
+status: 200
+response: {
+  "code": 0,
+  "data": {
+    "user_id": 4,
+    "date": "2026-06-24",
+    "count": 3,
+    "limit": 50,
+    "remaining": 47
+  },
+  "message": "ok"
+}

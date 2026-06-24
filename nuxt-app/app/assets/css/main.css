@@ -1,0 +1,458 @@
+/* 全局 CSS 变量 + Tailwind directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* 深色默认 - 带一点紫的深色 */
+  --bg-primary: #0a0a1a;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1f2937;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --accent: #38bdf8;
+  --accent-hover: #0ea5e9;
+  --danger: #f87171;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --border-color: rgba(255, 255, 255, 0.08);
+  /* 终端绿 - Matrix 强调色 */
+  --color-terminal: #00FF41;
+  /* 代码块背景 - Catppuccin Mocha */
+  --code-bg: #1e1e2e;
+  --code-header-bg: #181825;
+}
+
+:root.light {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --accent: #0284c7;
+  --accent-hover: #0369a1;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --warning: #d97706;
+  --border-color: rgba(0, 0, 0, 0.08);
+  --color-terminal: #008f11;
+  --code-bg: #282a36;
+  --code-header-bg: #21222c;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Noto Sans SC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ===== 玻璃磨砂效果优化 (P1-3) ===== */
+
+/* 深色/浅色模式下的玻璃组件颜色修正 */
+:root.light .bg-glass {
+  background-color: rgba(255, 255, 255, 0.75);
+  background-image: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+}
+
+:root.light .bg-glass-hover,
+:root.light .hover\:bg-glass-hover:hover {
+  background-color: rgba(255, 255, 255, 0.85);
+}
+
+:root.light .border-glass-border {
+  border-color: #dbeafe;
+}
+
+/* 通用玻璃面板 */
+.glass-panel {
+  @apply rounded-glass bg-glass backdrop-blur-glass border border-glass-border shadow-glass;
+}
+
+/* 玻璃卡片 hover 光泽扫过效果 */
+.glass-card-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.08) 50%, transparent 70%);
+  transition: left 0.4s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.glass-card-shine:hover::after {
+  left: 100%;
+}
+
+/* ===== 自定义滚动条 ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+/* ===== 全局链接 ===== */
+a {
+  color: var(--accent);
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* 文本选择 - 终端绿 */
+::selection {
+  background: rgba(0, 255, 65, 0.25);
+  color: var(--text-primary);
+}
+
+/* ===== Markdown 内容基础样式 ===== */
+.prose-custom {
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+.prose-custom h1,
+.prose-custom h2,
+.prose-custom h3,
+.prose-custom h4 {
+  color: var(--text-primary);
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+  font-weight: 600;
+}
+
+.prose-custom h1 {
+  font-size: 1.875em;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.3em;
+}
+
+.prose-custom h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.3em;
+}
+
+.prose-custom p {
+  margin-bottom: 1em;
+}
+
+.prose-custom img {
+  border-radius: 0.75rem;
+  max-width: 100%;
+}
+
+/* 行内代码 - 粉色/橙色高亮 */
+.prose-custom code {
+  background: rgba(255, 70, 137, 0.12);
+  color: #ff70a6;
+  padding: 0.15em 0.4em;
+  border-radius: 0.375rem;
+  font-size: 0.875em;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  border: 1px solid rgba(255, 70, 137, 0.15);
+}
+
+:root.light .prose-custom code {
+  color: #d6336c;
+  background: rgba(214, 51, 108, 0.1);
+}
+
+/* ===== 终端风格代码块 ===== */
+.prose-custom pre {
+  position: relative;
+  background: var(--code-bg);
+  padding: 2.5em 1em 1em;
+  border-radius: 0.75rem;
+  overflow-x: auto;
+  margin-bottom: 1em;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* macOS 窗口三色圆点 */
+.prose-custom pre::before {
+  content: '';
+  position: absolute;
+  top: 0.75em;
+  left: 1em;
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: 50%;
+  background: #ff5f56;
+  box-shadow:
+    1.25em 0 0 #ffbd2e,
+    2.5em 0 0 #27c93f;
+}
+
+.prose-custom pre code {
+  background: transparent;
+  padding: 0;
+  color: #F8F8F2;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 0.875em;
+  line-height: 1.6;
+  border: none;
+}
+
+/* codehilite 生成的代码块 */
+.prose-custom .highlight {
+  background: var(--code-bg);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  margin-bottom: 1em;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.prose-custom .highlight pre {
+  padding: 2.5em 1em 1em;
+  border-radius: 0;
+  border: none;
+  margin: 0;
+  background: var(--code-bg);
+}
+
+.prose-custom .highlight pre::before {
+  content: '';
+  position: absolute;
+  top: 0.75em;
+  left: 1em;
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: 50%;
+  background: #ff5f56;
+  box-shadow:
+    1.25em 0 0 #ffbd2e,
+    2.5em 0 0 #27c93f;
+}
+
+.prose-custom blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 1em;
+  color: var(--text-muted);
+  margin-bottom: 1em;
+  background: rgba(56, 189, 248, 0.05);
+  padding: 0.5em 1em;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.prose-custom ul,
+.prose-custom ol {
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+}
+
+.prose-custom li {
+  margin-bottom: 0.25em;
+}
+
+.prose-custom table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1em;
+}
+
+.prose-custom th,
+.prose-custom td {
+  border: 1px solid var(--border-color);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+
+.prose-custom th {
+  background: var(--bg-tertiary);
+  font-weight: 600;
+}
+
+/* ===== Pygments Monokai 语法高亮 ===== */
+.highlight .hll { background-color: #49483e }
+.highlight { background: #1e1e2e; color: #F8F8F2 }
+.highlight .c { color: #959077 }
+.highlight .err { color: #ED007E; background-color: #1E0010 }
+.highlight .esc { color: #F8F8F2 }
+.highlight .g { color: #F8F8F2 }
+.highlight .k { color: #66D9EF }
+.highlight .l { color: #AE81FF }
+.highlight .n { color: #F8F8F2 }
+.highlight .o { color: #FF4689 }
+.highlight .x { color: #F8F8F2 }
+.highlight .p { color: #F8F8F2 }
+.highlight .ch { color: #959077 }
+.highlight .cm { color: #959077 }
+.highlight .cp { color: #959077 }
+.highlight .cpf { color: #959077 }
+.highlight .c1 { color: #959077 }
+.highlight .cs { color: #959077 }
+.highlight .gd { color: #FF4689 }
+.highlight .ge { color: #F8F8F2; font-style: italic }
+.highlight .ges { color: #F8F8F2; font-weight: bold; font-style: italic }
+.highlight .gr { color: #F8F8F2 }
+.highlight .gh { color: #F8F8F2 }
+.highlight .gi { color: #A6E22E }
+.highlight .go { color: #66D9EF }
+.highlight .gp { color: #FF4689; font-weight: bold }
+.highlight .gs { color: #F8F8F2; font-weight: bold }
+.highlight .gu { color: #959077 }
+.highlight .gt { color: #F8F8F2 }
+.highlight .kc { color: #66D9EF }
+.highlight .kd { color: #66D9EF }
+.highlight .kn { color: #FF4689 }
+.highlight .kp { color: #66D9EF }
+.highlight .kr { color: #66D9EF }
+.highlight .kt { color: #66D9EF }
+.highlight .ld { color: #E6DB74 }
+.highlight .m { color: #AE81FF }
+.highlight .s { color: #E6DB74 }
+.highlight .na { color: #A6E22E }
+.highlight .nb { color: #F8F8F2 }
+.highlight .nc { color: #A6E22E }
+.highlight .no { color: #66D9EF }
+.highlight .nd { color: #A6E22E }
+.highlight .ni { color: #F8F8F2 }
+.highlight .ne { color: #A6E22E }
+.highlight .nf { color: #A6E22E }
+.highlight .nl { color: #F8F8F2 }
+.highlight .nn { color: #F8F8F2 }
+.highlight .nx { color: #A6E22E }
+.highlight .py { color: #F8F8F2 }
+.highlight .nt { color: #FF4689 }
+.highlight .nv { color: #F8F8F2 }
+.highlight .ow { color: #FF4689 }
+.highlight .pm { color: #F8F8F2 }
+.highlight .w { color: #F8F8F2 }
+.highlight .mb { color: #AE81FF }
+.highlight .mf { color: #AE81FF }
+.highlight .mh { color: #AE81FF }
+.highlight .mi { color: #AE81FF }
+.highlight .mo { color: #AE81FF }
+.highlight .sa { color: #E6DB74 }
+.highlight .sb { color: #E6DB74 }
+.highlight .sc { color: #E6DB74 }
+.highlight .dl { color: #E6DB74 }
+.highlight .sd { color: #E6DB74 }
+.highlight .s2 { color: #E6DB74 }
+.highlight .se { color: #AE81FF }
+.highlight .sh { color: #E6DB74 }
+.highlight .si { color: #E6DB74 }
+.highlight .sx { color: #E6DB74 }
+.highlight .sr { color: #E6DB74 }
+.highlight .s1 { color: #E6DB74 }
+.highlight .ss { color: #E6DB74 }
+.highlight .bp { color: #F8F8F2 }
+.highlight .fm { color: #A6E22E }
+.highlight .vc { color: #F8F8F2 }
+.highlight .vg { color: #F8F8F2 }
+.highlight .vi { color: #F8F8F2 }
+.highlight .vm { color: #F8F8F2 }
+.highlight .il { color: #AE81FF }
+
+/* ===== 樱花/星星飘落动画 (P1-2) ===== */
+@keyframes sakura-fall {
+  0% {
+    transform: translateY(-10vh) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(110vh) translateX(50px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.sakura-particle {
+  position: fixed;
+  top: -10px;
+  pointer-events: none;
+  z-index: 5;
+  animation: sakura-fall linear infinite;
+}
+
+/* ===== 终端绿强调色工具类 ===== */
+.text-terminal {
+  color: var(--color-terminal);
+}
+
+.bg-terminal {
+  background-color: var(--color-terminal);
+}
+
+.border-terminal {
+  border-color: var(--color-terminal);
+}
+
+/* 终端风格文本 */
+.terminal-text {
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  color: var(--color-terminal);
+}
+
+/* ===== 文章卡片 hover 粉紫光晕 (P1-2) ===== */
+.post-card-glow {
+  transition: all 0.3s ease;
+}
+
+.post-card-glow:hover {
+  box-shadow:
+    0 0 20px rgba(255, 70, 137, 0.15),
+    0 0 40px rgba(168, 85, 247, 0.1);
+}
+
+/* ===== 星空背景动画 (P1-2) ===== */
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.star-particle {
+  animation: star-twinkle ease-in-out infinite;
+}
+
+/* ===== 黑客模式彩蛋 (P1-2 可选) ===== */
+:root.hacker-mode {
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-tertiary: #111111;
+  --text-primary: #00FF41;
+  --text-secondary: #00cc33;
+  --text-muted: #008822;
+  --accent: #00FF41;
+  --accent-hover: #00cc33;
+  --border-color: rgba(0, 255, 65, 0.15);
+}
+
+:root.hacker-mode .glass-panel {
+  border-color: rgba(0, 255, 65, 0.2);
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.05);
+}
