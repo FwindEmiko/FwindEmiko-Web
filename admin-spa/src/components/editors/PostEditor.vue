@@ -54,6 +54,62 @@ async function loadMeta() {
   tags.value = tagRes.data
 }
 
+// ========== 分类/标签自定义创建 ==========
+const categoryDialogVisible = ref(false)
+const newCategoryName = ref('')
+const newCategoryDesc = ref('')
+
+const tagDialogVisible = ref(false)
+const newTagName = ref('')
+
+function openCategoryDialog() {
+  newCategoryName.value = ''
+  newCategoryDesc.value = ''
+  categoryDialogVisible.value = true
+}
+
+async function createCategory() {
+  const name = newCategoryName.value.trim()
+  if (!name) {
+    ElMessage.warning('请输入分类名称')
+    return
+  }
+  try {
+    const res = await api.post<CategoryOut>('/categories', {
+      name,
+      description: newCategoryDesc.value || undefined,
+    })
+    categories.value.push(res.data)
+    form.category_id = res.data.id
+    categoryDialogVisible.value = false
+    ElMessage.success('分类已创建')
+  } catch (error: any) {
+    ElMessage.error(error.message || '创建分类失败')
+  }
+}
+
+function openTagDialog() {
+  newTagName.value = ''
+  tagDialogVisible.value = true
+}
+
+async function createTag() {
+  const name = newTagName.value.trim()
+  if (!name) {
+    ElMessage.warning('请输入标签名称')
+    return
+  }
+  try {
+    const res = await api.post<TagOut>('/tags', { name })
+    tags.value.push(res.data)
+    form.tag_ids.push(res.data.id)
+    tagDialogVisible.value = false
+    ElMessage.success('标签已创建')
+  } catch (error: any) {
+    ElMessage.error(error.message || '创建标签失败')
+  }
+}
+
 function applyInitial() {
   if (props.initial) {
     form.title = props.initial.title ?? ''
@@ -78,6 +134,22 @@ function applyInitial() {
     }
   }
 }
+
+// 监听分类/标签选择"新建"选项
+watch(() => form.category_id, (val) => {
+  if (val === '__new_cat' as any) {
+    form.category_id = null
+    openCategoryDialog()
+  }
+})
+
+watch(() => form.tag_ids, (val) => {
+  const idx = val.indexOf('__new_tag' as any)
+  if (idx > -1) {
+    form.tag_ids.splice(idx, 1)
+    openTagDialog()
+  }
+}, { deep: true })
 
 function restoreDraft() {
   const raw = localStorage.getItem(draftKey.value)
@@ -262,6 +334,7 @@ watch(
               :label="cat.name"
               :value="cat.id"
             />
+            <el-option key="__new_cat" label="➕ 新建分类..." :value="'__new_cat' as any" />
           </el-select>
         </el-form-item>
         <el-form-item label="标签" class="md:col-span-3">
@@ -272,6 +345,7 @@ watch(
               :label="tag.name"
               :value="tag.id"
             />
+            <el-option key="__new_tag" label="➕ 新建标签..." :value="'__new_tag' as any" />
           </el-select>
         </el-form-item>
       </div>
@@ -295,9 +369,11 @@ watch(
         <span class="text-xs text-[var(--text-secondary)]">快捷键：Ctrl+S 保存草稿，Ctrl+Enter 发布，Esc 关闭弹窗</span>
       </div>
 
-      <el-form-item label="正文">
+      <!-- 正文编辑器：移出 form-item，占满全宽 -->
+      <div class="mb-4">
+        <div class="text-sm text-[var(--text-secondary)] mb-2">正文</div>
         <div :id="editorId" class="w-full" />
-      </el-form-item>
+      </div>
 
       <div class="flex gap-3 sticky bottom-0 backdrop-blur-xl py-3 z-10 px-4 -mx-4 border-t border-[var(--border)]" style="background: var(--panel);">
         <el-button @click="submit('draft')">存草稿</el-button>
@@ -305,5 +381,34 @@ watch(
         <el-button text @click="saveDraft">保存本地草稿</el-button>
       </div>
     </el-form>
+
+    <!-- 新建分类对话框 -->
+    <el-dialog v-model="categoryDialogVisible" title="新建分类" width="400px">
+      <el-form label-position="top">
+        <el-form-item label="分类名称">
+          <el-input v-model="newCategoryName" placeholder="如：技术教程" @keyup.enter="createCategory" />
+        </el-form-item>
+        <el-form-item label="描述（可选）">
+          <el-input v-model="newCategoryDesc" type="textarea" :rows="2" placeholder="分类描述" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="categoryDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="createCategory">创建</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 新建标签对话框 -->
+    <el-dialog v-model="tagDialogVisible" title="新建标签" width="400px">
+      <el-form label-position="top">
+        <el-form-item label="标签名称">
+          <el-input v-model="newTagName" placeholder="如：Vue3" @keyup.enter="createTag" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="tagDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="createTag">创建</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
