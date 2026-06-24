@@ -52,7 +52,7 @@
 
       <div class="pt-6 border-t border-glass-border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
         <p>© {{ new Date().getFullYear() }} 狐风轩汐の小屋. All rights reserved.</p>
-        <p>京ICP备XXXXXXXX号-1 | 仅供学习交流使用</p>
+        <p><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" class="hover:text-[var(--accent)]">苏ICP备2024133820号-2</a></p>
       </div>
     </div>
   </footer>
