@@ -131,7 +131,7 @@ async function initVditor() {
     cache: { enable: false },
     // 使用国内可访问的 CDN 加载 Vditor 动态资源（mode 脚本/图标/emoji）
     // 自托管 Vditor 资源（cdn 被墙）
-    cdn: '/vditor-dist',
+    cdn: import.meta.env.BASE_URL + 'vditor',
     toolbar: [
       'headings',
       'bold',
