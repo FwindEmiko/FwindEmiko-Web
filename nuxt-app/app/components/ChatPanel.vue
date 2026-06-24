@@ -1,4 +1,21 @@
 <template>
+  <!-- 顶部弹幕 Toast -->
+  <Transition name="toast-slide">
+    <div
+      v-if="toast.show"
+      class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] glass-panel px-5 py-3 rounded-xl shadow-glass flex items-center gap-3 cursor-pointer select-none max-w-[90vw]"
+      @click="toast.link && navigateTo(toast.link)"
+    >
+      <div class="w-8 h-8 rounded-full bg-[var(--accent)]/15 flex items-center justify-center text-[var(--accent)] flex-shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-[var(--text-primary)]">{{ toast.message }}</p>
+        <p v-if="toast.link" class="text-xs text-[var(--accent)]">点击前往登录 →</p>
+      </div>
+    </div>
+  </Transition>
+
   <div class="fixed bottom-24 right-4 z-50 flex flex-col items-end">
     <!-- Toggle button: 始终显示，未登录时提示 -->
     <button
@@ -123,12 +140,18 @@ const streamingContent = ref('')
 const messagesRef = ref<HTMLElement>()
 const quota = ref<{ remaining: number } | null>(null)
 
-// 未登录点击 💬 按钮 → 提示并跳转登录
+// 顶部弹幕 toast
+const toast = ref({ show: false, message: '', link: '' })
+
+function showToast(message: string, link = '') {
+  toast.value = { show: true, message, link }
+  setTimeout(() => { toast.value.show = false }, 4000)
+}
+
+// 未登录点击 💬 按钮 → 顶部弹幕提醒
 function handleToggle() {
   if (!auth.isLoggedIn) {
-    if (confirm('请先登录后使用 AI 对话')) {
-      navigateTo('/login')
-    }
+    showToast('请先登录后使用 AI 对话', '/login')
     return
   }
   modelValue.value = true
@@ -285,6 +308,11 @@ onMounted(() => {
   height: 380px;
   max-height: 80vh;
 }
+
+.toast-slide-enter-active { transition: all 0.3s ease-out; }
+.toast-slide-leave-active { transition: all 0.25s ease-in; }
+.toast-slide-enter-from { opacity: 0; transform: translate(-50%, -20px); }
+.toast-slide-leave-to   { opacity: 0; transform: translate(-50%, -12px); }
 
 @media (min-width: 768px) {
   .chat-panel-box {
