@@ -134,6 +134,8 @@ jobs:
           ssh -o ConnectTimeout=60 root@20.20.20.1 << 'ENDSSH'
             set -e
             cd /opt/fwindemiko-web
+            # 清理旧文件（保留 .env）
+            find . -mindepth 1 -maxdepth 1 -not -name '.env' -exec rm -rf {} + 2>/dev/null || true
             tar -xzf /tmp/fwe-deploy.tar.gz
             rm /tmp/fwe-deploy.tar.gz
             docker-compose -f docker-compose.prod.yml up -d --build
