@@ -142,8 +142,8 @@ jobs:
             # 运行数据库迁移（新增字段等增量变更）
             sleep 8
             docker-compose -f docker-compose.prod.yml exec -T backend alembic upgrade head 2>&1 || echo '[WARN] migration skipped (may already be up to date)'
-            # admin 容器可能在 volume 挂载完成前就启动，导致 403；重启确保 dist 已就绪
-            docker-compose -f docker-compose.prod.yml restart admin
+            # admin 容器可能在 volume 挂载完成前就启动，导致 403；重建确保 dist 已就绪
+            docker-compose -f docker-compose.prod.yml up -d --force-recreate admin
             docker image prune -f
             echo "✅ 部署完成"
             docker-compose -f docker-compose.prod.yml ps

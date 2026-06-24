@@ -11,7 +11,7 @@
     </div>
 
     <!-- Hero -->
-    <section class="relative w-full min-h-[85vh] -mt-14 pt-14 flex items-center justify-center overflow-hidden">
+    <section class="relative w-full min-h-screen -mt-14 pt-14 flex items-center justify-center overflow-hidden">
       <!-- Starfield gradient background: 紫→蓝→青 -->
       <div class="absolute inset-0 bg-gradient-to-br from-purple-600/20 via-blue-500/15 to-cyan-400/20" />
 
