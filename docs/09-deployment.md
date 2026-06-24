@@ -133,6 +133,33 @@ server {
 
 ---
 
+## 3.1 宿主机 Nginx → Admin 容器代理（生产）
+
+生产环境使用 `docker-compose.prod.yml`，Admin SPA 运行在 `fwe-admin` 容器（端口 4175）。
+Admin 构建时 `vite.config.ts` 设置了 `base: '/admin/'`，因此通过目录路径 `/admin/` 访问。
+
+在 ECS 宿主机 nginx 配置（`/www/MiragEdge/MiragEdge-DocWeb/.DockerCompose/default.conf`）中添加以下 location，将 `/admin/` 代理到 admin 容器：
+
+```nginx
+# === Admin SPA → fwe-admin 容器 ===
+location /admin/ {
+    proxy_pass http://fwe-admin:80;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+> **说明**：
+> - `proxy_pass http://fwe-admin:80;` 不带尾部路径，URI 原样传递（含 `/admin/` 前缀）。
+> - admin 容器内 nginx（`admin-nginx.conf`）通过 `alias` 将 `/admin/` 映射到静态文件目录。
+> - Admin 使用 `createWebHashHistory`，路由形如 `/admin/#/dashboard`，hash 部分不经过服务器。
+> - API 请求使用相对路径 `/api`，由宿主机 nginx 的 `/api/` location 统一代理到后端。
+> - 前端登录后 `access_token` 存入 localStorage，打开 `/admin/` 时 admin-spa 读取同一 key 自动恢复登录态（统一登录）。
+
+---
+
 ## 4. Dockerfile 示例
 
 ### Backend (`backend/Dockerfile`)

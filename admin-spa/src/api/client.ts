@@ -54,7 +54,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       if (!getRefreshToken()) {
         clearTokens()
-        window.location.href = '/#/login'
+        window.location.href = '/admin/#/login'
         return Promise.reject(error)
       }
       originalRequest._retry = true
@@ -86,7 +86,7 @@ api.interceptors.response.use(
         return api(originalRequest)
       } catch (refreshError) {
         clearTokens()
-        window.location.href = '/#/login'
+        window.location.href = '/admin/#/login'
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false

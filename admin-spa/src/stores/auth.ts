@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { api, clearTokens, setTokens } from '@/api/client'
+import { api, clearTokens, getAccessToken, setTokens } from '@/api/client'
 import type { LoginResponse, UserInfo } from '@windemiko/shared'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -25,7 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function restore() {
-    const access = localStorage.getItem('admin_access_token')
+    const access = getAccessToken()
     if (!access) return false
     token.value = access
     try {

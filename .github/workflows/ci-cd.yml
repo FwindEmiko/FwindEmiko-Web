@@ -139,6 +139,8 @@ jobs:
             tar -xzf /tmp/fwe-deploy.tar.gz
             rm /tmp/fwe-deploy.tar.gz
             docker-compose -f docker-compose.prod.yml up -d --build
+            # admin 容器可能在 volume 挂载完成前就启动，导致 403；重启确保 dist 已就绪
+            docker-compose -f docker-compose.prod.yml restart admin
             docker image prune -f
             echo "✅ 部署完成"
             docker-compose -f docker-compose.prod.yml ps

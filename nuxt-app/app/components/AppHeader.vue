@@ -54,6 +54,18 @@
             <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
           </button>
 
+          <!-- Admin entry -->
+          <a
+            v-if="auth.isLoggedIn && auth.user?.role === 'admin'"
+            href="/admin/"
+            target="_blank"
+            rel="noopener"
+            class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-[var(--accent)]/40 text-[var(--accent)] bg-[var(--accent)]/5 hover:bg-[var(--accent)]/15 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+            管理后台
+          </a>
+
           <!-- Auth -->
           <template v-if="auth.isLoggedIn && auth.user">
             <NuxtLink to="/profile" class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-glass-hover transition-colors">
@@ -126,6 +138,16 @@
               </NuxtLink>
             </template>
             <template v-else>
+              <a
+                v-if="auth.user?.role === 'admin'"
+                href="/admin/"
+                target="_blank"
+                rel="noopener"
+                class="block px-3 py-2 text-sm text-[var(--accent)] border border-[var(--accent)]/30 rounded-lg text-center"
+                @click="mobileMenuOpen = false"
+              >
+                管理后台
+              </a>
               <NuxtLink
                 to="/profile"
                 class="block px-3 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
