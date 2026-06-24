@@ -22,8 +22,10 @@ import type {
   ChatQuotaOut,
 } from '../types'
 
-export const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000/api'
-export const UPLOAD_BASE_URL = 'http://localhost:8000'
+// 默认使用相对路径 /api，由各前端代理（Nuxt server middleware / Nginx / Vite devProxy）转发到后端
+// 本地开发如需直连后端，可在 .env 中设置 VITE_API_BASE_URL=http://localhost:8000/api
+export const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api'
+export const UPLOAD_BASE_URL = import.meta.env?.VITE_UPLOAD_BASE_URL || ''
 
 // 浏览器/客户端环境判定
 const isClient = typeof window !== 'undefined'

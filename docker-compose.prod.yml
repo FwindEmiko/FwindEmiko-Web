@@ -34,8 +34,10 @@ services:
     ports:
       - "4173:3000"
     environment:
-      - NUXT_PUBLIC_API_BASE=https://f.windemiko.top/api
-      - NUXT_PUBLIC_SITE_URL=https://f.windemiko.top
+      # 后端地址（Docker 内部网络），供 Nuxt server middleware 代理使用
+      - BACKEND_URL=http://backend:8000
+      # 站点 URL（用于 sitemap/robots，需在构建时设置才生效）
+      - NUXT_PUBLIC_SITE_URL=http://dev.miragedge.top:4173
     networks:
       - fwe-prod
     depends_on:

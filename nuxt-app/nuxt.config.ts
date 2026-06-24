@@ -5,9 +5,13 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000/api',
-      uploadBase: process.env.NUXT_PUBLIC_UPLOAD_BASE || 'http://localhost:8000',
+      // 空 = 同源请求，通过 Nuxt server middleware 代理到后端
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || '',
+      uploadBase: process.env.NUXT_PUBLIC_UPLOAD_BASE || '',
     },
+    // 服务端专用：后端地址，用于 server/api 代理
+    // 生产: http://backend:8000 (Docker 内部网络) | 开发: http://localhost:8000
+    backendUrl: process.env.BACKEND_URL || 'http://localhost:8000',
   },
 
   app: {
@@ -72,7 +76,7 @@ export default defineNuxtConfig({
     },
     urls: async () => {
       const dynamicUrls: Array<{ loc: string; lastmod?: string; changefreq: string; priority: number }> = []
-      const apiBase = 'http://localhost:8000/api'
+      const apiBase = `${process.env.BACKEND_URL || 'http://localhost:8000'}/api`
       try {
         const [postsRes, resourcesRes] = await Promise.all([
           fetch(`${apiBase}/posts?size=1000`).then(r => r.json()).catch(() => null),

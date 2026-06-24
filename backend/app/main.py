@@ -10,8 +10,9 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import settings
-from app.database import engine, Base
+from app.database import engine, Base, AsyncSessionLocal
 from app.core.response import error
+from app.seed import init_seed_data
 from app.modules.auth.router import router as auth_router
 from app.modules.blog.router import router as blog_router
 from app.modules.resources.router import router as resources_router
@@ -33,10 +34,13 @@ os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期：启动时建表，关闭时释放连接"""
+    """应用生命周期：启动时建表+种子数据，关闭时释放连接"""
     # 启动
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # 种子数据初始化（users 表为空时创建默认管理员）
+    async with AsyncSessionLocal() as session:
+        await init_seed_data(session)
     yield
     # 关闭
     await engine.dispose()

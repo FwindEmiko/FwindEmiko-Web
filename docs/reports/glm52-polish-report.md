@@ -183,3 +183,133 @@
 - ✅ 代码块使用 JetBrains Mono 字体 + 深色终端背景
 - ✅ Admin 时间列使用本地化格式（YYYY-MM-DD HH:mm）
 - ✅ 自定义 error.vue 包含 AppHeader + AppFooter + 玻璃磨砂风格
+
+---
+
+# 部署问题诊断与修复报告
+
+> 生成时间：2026-06-25
+> 执行范围：P0 前端 API 地址 → P1 数据库种子数据 → P2/P3/P4 部署配置确认
+
+---
+
+## P0：前端登录 Network Error（已修复）
+
+**根因分析：**
+- `packages/shared/src/api/index.ts` 中 `API_BASE_URL` 默认回退到 `http://localhost:8000/api`（绝对路径）
+- Nuxt 应用没有 `.env` 设置 `VITE_API_BASE_URL`，导致浏览器在生产环境尝试连接 `http://localhost:8000` → 失败
+- `nuxt.config.ts` 的 `runtimeConfig.public.apiBase` 实际上未被 shared 包消费（两套不同的配置系统）
+- `docker-compose.prod.yml` 中 `NUXT_PUBLIC_API_BASE=https://f.windemiko.top/api` 无法生效（编译时烘焙 + 域名未配置反向代理）
+
+**修复方案：** 采用 server middleware 代理方案，前端使用相对路径 `/api`，由 Nuxt 服务端代理到后端容器
+
+**改动文件：**
+
+1. [packages/shared/src/api/index.ts](file:///f:/FCelestial/fwe-repo/packages/shared/src/api/index.ts)
+   - `API_BASE_URL` 默认值：`http://localhost:8000/api` → `/api`（相对路径）
+   - `UPLOAD_BASE_URL` 默认值：`http://localhost:8000` → `''`（空 = 同源）
+   - 新增 `VITE_UPLOAD_BASE_URL` 环境变量支持
+
+2. [nuxt-app/server/api/[...].ts](file:///f:/FCelestial/fwe-repo/nuxt-app/server/api/%5B...%5D.ts)（新建）
+   - Catch-all 路由：将 `/api/**` 请求代理到 `BACKEND_URL`（生产 `http://backend:8000`，开发 `http://localhost:8000`）
+
+3. [nuxt-app/server/routes/uploads/[...].ts](file:///f:/FCelestial/fwe-repo/nuxt-app/server/routes/uploads/%5B...%5D.ts)（新建）
+   - Catch-all 路由：将 `/uploads/**` 请求代理到后端（图片/文件访问）
+
+4. [nuxt-app/nuxt.config.ts](file:///f:/FCelestial/fwe-repo/nuxt-app/nuxt.config.ts)
+   - `runtimeConfig.public.apiBase` 默认值：`http://localhost:8000/api` → `''`（空 = 同源）
+   - `runtimeConfig.public.uploadBase` 默认值：`http://localhost:8000` → `''`
+   - 新增 `runtimeConfig.backendUrl`（服务端专用）：`process.env.BACKEND_URL || 'http://localhost:8000'`
+   - sitemap `apiBase`：硬编码 `http://localhost:8000/api` → `${process.env.BACKEND_URL || 'http://localhost:8000'}/api`
+
+5. [docker-compose.prod.yml](file:///f:/FCelestial/fwe-repo/docker-compose.prod.yml)
+   - 移除 `NUXT_PUBLIC_API_BASE=https://f.windemiko.top/api`
+   - 新增 `BACKEND_URL=http://backend:8000`（Docker 内部网络，供 server middleware 使用）
+   - `NUXT_PUBLIC_SITE_URL` 更新为 `http://dev.miragedge.top:4173`
+
+---
+
+## P1：Admin 登录 401 Unauthorized（已修复）
+
+**根因分析：**
+- `windemiko` 数据库 `users` 表有 0 条记录
+- 后端 `/api/auth/login` 找不到匹配用户 → 401
+- 密码哈希方式：passlib + bcrypt（`app/core/security.py`）
+
+**修复方案：** 后端启动时自动检测 users 表为空并创建默认管理员
+
+**改动文件：**
+
+1. [backend/app/seed.py](file:///f:/FCelestial/fwe-repo/backend/app/seed.py)（新建）
+   - `init_seed_data(db)` 函数：检测 `users` 表记录数，为空时创建默认管理员
+   - 默认凭据：`admin` / `admin123` / `admin@windemiko.top` / role=`admin`
+   - 使用与后端一致的 bcrypt 哈希算法
+   - 日志警告提示立即修改默认密码
+
+2. [backend/app/main.py](file:///f:/FCelestial/fwe-repo/backend/app/main.py)
+   - 导入 `AsyncSessionLocal` 和 `init_seed_data`
+   - `lifespan` 中 `create_all` 后调用 `init_seed_data(session)` 初始化种子数据
+
+---
+
+## P2：admin-nginx.conf nginx 变量被清空（已确认修复）
+
+**状态：** 仓库源码已正确（commit `e948a73`）
+
+[admin-nginx.conf](file:///f:/FCelestial/fwe-repo/admin-nginx.conf) 中 `$host`、`$uri`、`$remote_addr` 等 nginx 变量均正确保留，未被 shell 展开为空字符串。无需修改。
+
+---
+
+## P3：docker-compose.prod.yml 引用已删除的 db 服务（已确认修复）
+
+**状态：** 仓库源码已同步（commit `e948a73`）
+
+[docker-compose.prod.yml](file:///f:/FCelestial/fwe-repo/docker-compose.prod.yml) 已移除独立 `db` 服务块和 `fwe_db` volume，添加 `miragedge-network` external network，`backend` 加入 `miragedge-network`。无需修改。
+
+---
+
+## P4：CI/CD 工作流 compose 命令（已确认修复）
+
+**状态：** 仓库源码已正确（commit `898e286`）
+
+[.github/workflows/ci-cd.yml](file:///f:/FCelestial/fwe-repo/.github/workflows/ci-cd.yml) 已使用 `docker-compose`（带连字符），兼容 ECS Docker 版本。无需修改。
+
+---
+
+## P5：数据库种子数据 & 迁移系统
+
+- **Alembic 迁移系统**：已存在（`backend/alembic/`），含 `init_users_table` 和 `add_business_modules` 两个迁移版本
+- **种子数据**：已通过 P1 的 `seed.py` 实现，首次启动自动创建管理员
+
+---
+
+## 验证结果
+
+| 验证项 | 状态 |
+|--------|------|
+| `pnpm build` 前端构建 | ✅ 成功（exit code 0） |
+| `server/api/[...].ts` 编译 | ✅ `.output/server/chunks/routes/api/_..._.mjs` |
+| `server/routes/uploads/[...].ts` 编译 | ✅ `.output/server/chunks/routes/uploads/_..._.mjs` |
+| Python 语法检查 (seed.py + main.py) | ✅ 语法正确 |
+| P2 admin-nginx.conf 变量 | ✅ 已确认正确（commit e948a73） |
+| P3 compose db 服务移除 | ✅ 已确认同步（commit e948a73） |
+| P4 CI/CD docker-compose 命令 | ✅ 已确认正确（commit 898e286） |
+
+---
+
+## 部署后验证步骤
+
+```bash
+# 1. 重建容器
+ssh root@20.20.20.1 'cd /opt/fwindemiko-web && docker-compose -f docker-compose.prod.yml up -d --build'
+
+# 2. 验证
+curl -s http://dev.miragedge.top:4173/          # 前端首页 → 200
+curl -s http://dev.miragedge.top:4174/docs       # 后端 API 文档 → 200
+curl -s http://dev.miragedge.top:4175/           # Admin 登录页 → 200
+curl -s -X POST http://dev.miragedge.top:4174/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'  # → 200 + token
+```
+
+> ⚠️ 首次登录后请立即修改 admin 密码（seed.py 会在日志中打印警告）
