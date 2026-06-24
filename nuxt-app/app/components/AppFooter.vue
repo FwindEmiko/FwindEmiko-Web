@@ -23,7 +23,7 @@
         </div>
 
         <!-- About -->
-        <div class="flex flex-col items-center md:items-start text-center md:text-left">
+        <div class="flex flex-col items-center md:items-end text-center md:text-right">
           <h3 class="font-medium text-xs text-[var(--text-primary)] mb-2">关于</h3>
           <p class="text-xs text-[var(--text-muted)] leading-relaxed">
             本站采用 Nuxt 3 + FastAPI 构建<br>
