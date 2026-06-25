@@ -8,8 +8,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.config import settings
 from app.core.response import success
-from app.modules.auth.dependencies import require_role
 from app.modules.auth.models import User
+from app.modules.auth.permissions import Permissions, require_permission
 
 router = APIRouter()
 
@@ -39,9 +39,9 @@ ALLOWED_FILE_TYPES = {
 @router.post("/upload")
 async def upload_files(
     files: list[UploadFile] = File(...),
-    user: User = Depends(require_role("admin", "author")),
+    _: Permissions = Depends(require_permission("can_upload_file")),
 ):
-    """通用文件上传，返回可直接访问的 URL"""
+    """通用文件上传，返回可直接访问的 URL（需 can_upload_file）"""
     upload_dir = os.path.join(settings.UPLOAD_DIR, "editor")
     os.makedirs(upload_dir, exist_ok=True)
 

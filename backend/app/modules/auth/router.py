@@ -24,6 +24,18 @@ def _token_payload(user: User) -> dict:
     return {"sub": str(user.id), "username": user.username, "role": user.role}
 
 
+# 允许通过注册接口创建的角色（admin 必须由种子数据或管理员手动赋予）
+_REGISTERABLE_ROLES = {"member", "author", "moderator"}
+
+
+def _resolve_register_role() -> str:
+    """从环境变量读取注册默认角色，非法值回退为 member"""
+    role = (settings.REGISTER_DEFAULT_ROLE or "member").strip().lower()
+    if role not in _REGISTERABLE_ROLES:
+        return "member"
+    return role
+
+
 @router.post("/register")
 async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
     """用户注册"""
@@ -42,7 +54,7 @@ async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
         email=payload.email,
         password_hash=hash_password(payload.password),
         display_name=payload.display_name,
-        role="member",
+        role=_resolve_register_role(),
         is_active=True,
         is_verified=False,
         created_at=datetime.now(timezone.utc),

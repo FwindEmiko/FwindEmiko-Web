@@ -9,8 +9,13 @@ from sqlalchemy.orm import selectinload
 
 from app.core.response import success
 from app.database import get_db
-from app.modules.auth.dependencies import require_role
+from app.modules.auth.dependencies import get_current_user
 from app.modules.auth.models import User
+from app.modules.auth.permissions import (
+    Permissions,
+    get_permissions,
+    require_permission,
+)
 from app.modules.auth.schemas import UserInfo
 from app.modules.blog.models import Post
 from app.modules.downloads.models import FileNode
@@ -21,10 +26,10 @@ router = APIRouter()
 
 @router.get("/stats")
 async def admin_stats(
-    _: User = Depends(require_role("admin", "author")),
+    _: Permissions = Depends(require_permission("can_access_admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    """仪表盘统计数据"""
+    """仪表盘统计数据（需 can_access_admin）"""
     post_count = (await db.execute(select(func.count(Post.id)))).scalar() or 0
     resource_count = (await db.execute(select(func.count(Resource.id)))).scalar() or 0
     file_count = (await db.execute(select(func.count(FileNode.id)))).scalar() or 0
@@ -82,10 +87,10 @@ async def admin_stats(
 async def list_users(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
-    _: User = Depends(require_role("admin")),
+    _: Permissions = Depends(require_permission("can_view_users")),
     db: AsyncSession = Depends(get_db),
 ):
-    """用户列表（admin only）"""
+    """用户列表（需 can_view_users）"""
     total = (await db.execute(select(func.count(User.id)))).scalar() or 0
 
     result = await db.execute(
@@ -110,11 +115,11 @@ async def list_users(
 async def update_user_role(
     user_id: int,
     role: str,
-    _: User = Depends(require_role("admin")),
+    _: Permissions = Depends(require_permission("can_manage_users")),
     db: AsyncSession = Depends(get_db),
 ):
-    """修改用户角色（admin only）"""
-    if role not in {"admin", "author", "member"}:
+    """修改用户角色（需 can_manage_users）"""
+    if role not in {"admin", "author", "moderator", "member"}:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="无效角色")
 
     result = await db.execute(select(User).where(User.id == user_id))
@@ -133,10 +138,10 @@ async def update_user_role(
 async def update_user_status(
     user_id: int,
     is_active: bool,
-    _: User = Depends(require_role("admin")),
+    _: Permissions = Depends(require_permission("can_manage_users")),
     db: AsyncSession = Depends(get_db),
 ):
-    """启用/禁用用户（admin only）"""
+    """启用/禁用用户（需 can_manage_users）"""
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
@@ -156,16 +161,20 @@ async def admin_list_posts(
     status: str | None = Query(None),
     category_id: int | None = Query(None),
     q: str | None = Query(None, max_length=100),
-    user: User = Depends(require_role("admin", "author")),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    perms: Permissions = Depends(get_permissions),
 ):
-    """管理端文章列表（含草稿）"""
+    """管理端文章列表（需 can_access_admin；非 can_edit_others_post 只能看自己的）"""
+    from app.modules.auth.permissions import load_role_permission
+
     stmt = select(Post).options(
         selectinload(Post.author), selectinload(Post.category), selectinload(Post.tags)
     )
     count_stmt = select(func.count(Post.id))
 
-    if user.role != "admin":
+    # 非管理员且无编辑他人权限，仅能看自己的文章
+    if not perms.can("can_edit_others_post"):
         stmt = stmt.where(Post.author_id == user.id)
         count_stmt = count_stmt.where(Post.author_id == user.id)
 
@@ -224,10 +233,11 @@ async def admin_list_posts(
 @router.get("/posts/{post_id}")
 async def admin_get_post(
     post_id: int,
-    user: User = Depends(require_role("admin", "author")),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    perms: Permissions = Depends(get_permissions),
 ):
-    """管理端获取单篇文章（含草稿）"""
+    """管理端获取单篇文章（需 can_access_admin）"""
     result = await db.execute(
         select(Post)
         .options(selectinload(Post.author), selectinload(Post.category), selectinload(Post.tags))
@@ -236,7 +246,8 @@ async def admin_get_post(
     post = result.scalar_one_or_none()
     if post is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文章不存在")
-    if user.role != "admin" and post.author_id != user.id:
+    # 非作者本人需 can_edit_others_post 权限
+    if post.author_id != user.id and not perms.can("can_edit_others_post"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权访问该文章")
 
     return success(
@@ -265,10 +276,10 @@ async def admin_list_resources(
     status: str | None = Query(None),
     type: str | None = Query(None),
     q: str | None = Query(None, max_length=100),
-    _: User = Depends(require_role("admin", "author")),
+    _: Permissions = Depends(require_permission("can_access_admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    """管理端资源列表（含草稿）"""
+    """管理端资源列表（需 can_access_admin）"""
     stmt = select(Resource).options(selectinload(Resource.versions))
     count_stmt = select(func.count(Resource.id))
 
@@ -339,10 +350,10 @@ async def admin_list_resources(
 @router.get("/resources/{resource_id}")
 async def admin_get_resource(
     resource_id: int,
-    _: User = Depends(require_role("admin", "author")),
+    _: Permissions = Depends(require_permission("can_access_admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    """管理端获取单个资源（含草稿）"""
+    """管理端获取单个资源（需 can_access_admin）"""
     result = await db.execute(
         select(Resource)
         .options(selectinload(Resource.versions), selectinload(Resource.screenshots))
@@ -415,3 +426,148 @@ def __parse_json(value: str | list | None) -> list[str]:
         return [str(x) for x in data] if isinstance(data, list) else []
     except Exception:
         return []
+
+
+# === 角色权限矩阵管理接口（需 can_manage_users） ===
+
+from app.modules.auth.models import RolePermission
+from app.modules.auth.role_schemas import (
+    RolePermissionBatchUpdate,
+    RolePermissionCreate,
+    RolePermissionOut,
+)
+
+
+@router.get("/role-permissions")
+async def list_role_permissions(
+    _: Permissions = Depends(require_permission("can_manage_users")),
+    db: AsyncSession = Depends(get_db),
+):
+    """返回所有角色的权限矩阵（需 can_manage_users）
+
+    admin 角色行强制返回全部权限 True（即使数据库行不存在也会构造默认行）。
+    """
+    result = await db.execute(select(RolePermission).order_by(RolePermission.id))
+    rows = list(result.scalars().all())
+
+    # 确保 admin 行始终存在且全开
+    has_admin = any(r.role == "admin" for r in rows)
+    if not has_admin:
+        admin_row = RolePermission(role="admin")
+        # 全部布尔权限强制 True
+        for field in (
+            "can_create_post", "can_edit_own_post", "can_delete_own_post",
+            "can_publish_post", "can_edit_others_post", "can_delete_others_post",
+            "can_create_resource", "can_edit_own_resource", "can_delete_own_resource",
+            "can_publish_resource", "can_edit_others_resource", "can_delete_others_resource",
+            "can_upload_file", "can_download_file", "can_delete_file", "can_manage_folders",
+            "can_manage_categories", "can_manage_tags",
+            "can_view_users", "can_manage_users",
+            "can_use_chat", "can_access_admin",
+        ):
+            setattr(admin_row, field, True)
+        admin_row.chat_daily_limit = 9999
+        rows.insert(0, admin_row)
+    else:
+        # 已存在 admin 行：强制返回时也保证 True（不修改数据库，仅响应）
+        admin_row = next(r for r in rows if r.role == "admin")
+        for field in (
+            "can_create_post", "can_edit_own_post", "can_delete_own_post",
+            "can_publish_post", "can_edit_others_post", "can_delete_others_post",
+            "can_create_resource", "can_edit_own_resource", "can_delete_own_resource",
+            "can_publish_resource", "can_edit_others_resource", "can_delete_others_resource",
+            "can_upload_file", "can_download_file", "can_delete_file", "can_manage_folders",
+            "can_manage_categories", "can_manage_tags",
+            "can_view_users", "can_manage_users",
+            "can_use_chat", "can_access_admin",
+        ):
+            # 直接 setattr 到 ORM 实例上，model_validate 时会读到 True
+            # 注意：这里不 commit，仅影响响应序列化
+            object.__setattr__(admin_row, field, True)
+
+    return success([RolePermissionOut.model_validate(r).model_dump() for r in rows])
+
+
+@router.put("/role-permissions")
+async def update_role_permissions(
+    payload: RolePermissionBatchUpdate,
+    _: Permissions = Depends(require_permission("can_manage_users")),
+    db: AsyncSession = Depends(get_db),
+):
+    """批量保存角色权限矩阵（需 can_manage_users）
+
+    - 对每个 role 执行 upsert（存在则更新，不存在则插入）
+    - admin 角色强制保持全部 True，忽略前端传值
+    """
+    # 拉取现有全部行
+    result = await db.execute(select(RolePermission))
+    existing_map: dict[str, RolePermission] = {r.role: r for r in result.scalars().all()}
+
+    for item in payload.items:
+        if item.role == "admin":
+            # admin 强制全开，不修改
+            continue
+
+        if item.role in existing_map:
+            rp = existing_map[item.role]
+        else:
+            # 新角色行
+            rp = RolePermission(role=item.role)
+            db.add(rp)
+            existing_map[item.role] = rp
+
+        # 更新全部权限字段
+        for field in (
+            "can_create_post", "can_edit_own_post", "can_delete_own_post",
+            "can_publish_post", "can_edit_others_post", "can_delete_others_post",
+            "can_create_resource", "can_edit_own_resource", "can_delete_own_resource",
+            "can_publish_resource", "can_edit_others_resource", "can_delete_others_resource",
+            "can_upload_file", "can_download_file", "can_delete_file", "can_manage_folders",
+            "can_manage_categories", "can_manage_tags",
+            "can_view_users", "can_manage_users",
+            "can_use_chat", "can_access_admin",
+        ):
+            setattr(rp, field, getattr(item, field))
+        rp.chat_daily_limit = item.chat_daily_limit
+
+    await db.commit()
+    return success(None)
+
+
+@router.post("/role-permissions")
+async def create_role_permission(
+    payload: RolePermissionCreate,
+    _: Permissions = Depends(require_permission("can_manage_users")),
+    db: AsyncSession = Depends(get_db),
+):
+    """新建角色（需 can_manage_users）
+
+    - role 名必须为小写字母+数字+下划线
+    - 已存在的 role 会返回 422
+    - admin 角色不允许通过此接口创建（保留给 seed）
+    """
+    if payload.role == "admin":
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="admin 角色由系统保留")
+
+    existing = await db.execute(select(RolePermission).where(RolePermission.role == payload.role))
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"角色 {payload.role} 已存在")
+
+    rp = RolePermission(role=payload.role)
+    for field in (
+        "can_create_post", "can_edit_own_post", "can_delete_own_post",
+        "can_publish_post", "can_edit_others_post", "can_delete_others_post",
+        "can_create_resource", "can_edit_own_resource", "can_delete_own_resource",
+        "can_publish_resource", "can_edit_others_resource", "can_delete_others_resource",
+        "can_upload_file", "can_download_file", "can_delete_file", "can_manage_folders",
+        "can_manage_categories", "can_manage_tags",
+        "can_view_users", "can_manage_users",
+        "can_use_chat", "can_access_admin",
+    ):
+        setattr(rp, field, getattr(payload, field))
+    rp.chat_daily_limit = payload.chat_daily_limit
+
+    db.add(rp)
+    await db.commit()
+    await db.refresh(rp)
+    return success(RolePermissionOut.model_validate(rp).model_dump())

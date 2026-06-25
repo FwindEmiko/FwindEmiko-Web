@@ -12,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.config import settings
 from app.database import engine, Base, AsyncSessionLocal
 from app.core.response import error
-from app.seed import init_seed_data, ensure_admin_permissions
+from app.seed import init_seed_data, ensure_admin_permissions, ensure_role_permissions
 from app.modules.auth.router import router as auth_router
 from app.modules.blog.router import router as blog_router
 from app.modules.resources.router import router as resources_router
@@ -22,7 +22,7 @@ from app.modules.admin.router import router as admin_router
 from app.modules.files.router import router as files_router
 
 # 导入模型以确保 Base.metadata 注册全部表
-from app.modules.auth.models import User  # noqa: F401
+from app.modules.auth.models import User, RolePermission  # noqa: F401
 from app.modules.blog.models import Category, Post, Tag  # noqa: F401
 from app.modules.resources.models import Resource, ResourceVersion, Screenshot  # noqa: F401
 from app.modules.downloads.models import Folder, FileNode, FolderPermission  # noqa: F401
@@ -43,6 +43,8 @@ async def lifespan(app: FastAPI):
         await init_seed_data(session)
         # 为所有文件夹补齐 admin 全权限记录（用于权限矩阵 UI 显示）
         await ensure_admin_permissions(session)
+        # 确保 role_permissions 表存在全部预置角色行
+        await ensure_role_permissions(session)
     yield
     # 关闭
     await engine.dispose()

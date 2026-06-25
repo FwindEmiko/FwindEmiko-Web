@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.response import success
 from app.database import get_db
-from app.modules.auth.dependencies import get_current_user, require_role
+from app.modules.auth.dependencies import get_current_user
 from app.modules.auth.models import User
 from app.modules.chat import schemas
 from app.modules.chat.llm_client import stream_chat

@@ -10,7 +10,7 @@ from alembic import context
 
 from app.config import settings
 from app.database import Base
-from app.modules.auth.models import User  # noqa: F401
+from app.modules.auth.models import User, RolePermission  # noqa: F401
 from app.modules.blog.models import Category, Post, Tag  # noqa: F401
 from app.modules.resources.models import Resource, ResourceVersion, Screenshot  # noqa: F401
 from app.modules.downloads.models import Folder, FileNode, FolderPermission  # noqa: F401

@@ -10,8 +10,13 @@ from sqlalchemy.orm import selectinload
 
 from app.core.response import success
 from app.database import get_db
-from app.modules.auth.dependencies import get_current_user, require_role
+from app.modules.auth.dependencies import get_current_user
 from app.modules.auth.models import User
+from app.modules.auth.permissions import (
+    Permissions,
+    get_permissions,
+    require_permission,
+)
 from app.modules.blog import schemas
 from app.modules.blog.models import Category, Post, Tag, post_tags
 from app.modules.blog.service import generate_unique_slug, render_md
@@ -190,11 +195,15 @@ async def list_tags(db: AsyncSession = Depends(get_db)):
 @router.post("/posts")
 async def create_post(
     payload: schemas.PostCreate,
-    user: User = Depends(require_role("admin", "author")),
+    perms: Permissions = Depends(require_permission("can_create_post")),
     db: AsyncSession = Depends(get_db),
 ):
-    """创建文章（author+）"""
+    """创建文章（需 can_create_post；若直接发布还需 can_publish_post）"""
     slug = await generate_unique_slug(db, payload.title)
+
+    # 创建即发布需额外的发布权限
+    if payload.status == "published" and not perms.can("can_publish_post"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权发布文章，请先保存为草稿")
 
     published_at = None
     if payload.status == "published":
@@ -249,10 +258,11 @@ async def create_post(
 async def update_post(
     post_id: int,
     payload: schemas.PostUpdate,
-    user: User = Depends(require_role("admin", "author")),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    perms: Permissions = Depends(get_permissions),
 ):
-    """编辑文章（author 只能改自己的，admin 可改全部）"""
+    """编辑文章（自己的需 can_edit_own_post，他人的需 can_edit_others_post）"""
     result = await db.execute(
         select(Post)
         .options(selectinload(Post.tags))
@@ -261,8 +271,15 @@ async def update_post(
     post = result.scalar_one_or_none()
     if post is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文章不存在")
-    if user.role != "admin" and post.author_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="只能编辑自己的文章")
+
+    is_owner = post.author_id == user.id
+    if not is_owner:
+        # 非作者本人需 can_edit_others_post 权限
+        perms.require("can_edit_others_post")
+    else:
+        # 作者本人需 can_edit_own_post 权限
+        if not perms.can("can_edit_own_post"):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权编辑自己的文章")
 
     if payload.title is not None:
         post.title = payload.title
@@ -285,11 +302,16 @@ async def update_post(
         post.tags = list(tags_result.scalars().all())
 
     if payload.status is not None and payload.status != post.status:
-        # 状态机：draft -> published -> archived，admin 可任意调整
-        if user.role != "admin" and post.status == "archived":
+        # 状态机：draft -> published -> archived
+        # 已归档文章只有拥有 can_edit_others_post 权限的用户才能调整状态
+        if post.status == "archived" and not perms.can("can_edit_others_post"):
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="已归档文章不可修改状态")
-        if payload.status == "published" and post.status == "draft" and post.published_at is None:
-            post.published_at = datetime.now(timezone.utc)
+        # 草稿转发布需 can_publish_post 权限
+        if payload.status == "published" and post.status == "draft":
+            if not perms.can("can_publish_post"):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权发布文章")
+            if post.published_at is None:
+                post.published_at = datetime.now(timezone.utc)
         post.status = payload.status
 
     post.updated_at = datetime.now(timezone.utc)
@@ -306,16 +328,22 @@ async def update_post(
 @router.delete("/posts/{post_id}")
 async def delete_post(
     post_id: int,
-    user: User = Depends(require_role("admin", "author")),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    perms: Permissions = Depends(get_permissions),
 ):
-    """删除文章（admin 或作者本人）"""
+    """删除文章（自己的需 can_delete_own_post，他人的需 can_delete_others_post）"""
     result = await db.execute(select(Post).where(Post.id == post_id))
     post = result.scalar_one_or_none()
     if post is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文章不存在")
-    if user.role != "admin" and post.author_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="只能删除自己的文章")
+
+    is_owner = post.author_id == user.id
+    if not is_owner:
+        perms.require("can_delete_others_post")
+    else:
+        if not perms.can("can_delete_own_post"):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权删除自己的文章")
 
     await db.delete(post)
     await db.commit()
@@ -325,10 +353,10 @@ async def delete_post(
 @router.post("/categories")
 async def create_category(
     payload: schemas.CategoryCreate,
-    user: User = Depends(require_role("admin")),
+    _: Permissions = Depends(require_permission("can_manage_categories")),
     db: AsyncSession = Depends(get_db),
 ):
-    """创建分类（admin）"""
+    """创建分类（需 can_manage_categories）"""
     slug = payload.slug or payload.name.strip().lower().replace(" ", "-")
     existing = await db.execute(select(Category).where((Category.name == payload.name) | (Category.slug == slug)))
     if existing.scalar_one_or_none() is not None:
@@ -345,10 +373,10 @@ async def create_category(
 async def update_category(
     category_id: int,
     payload: schemas.CategoryUpdate,
-    user: User = Depends(require_role("admin")),
+    _: Permissions = Depends(require_permission("can_manage_categories")),
     db: AsyncSession = Depends(get_db),
 ):
-    """更新分类（admin）"""
+    """更新分类（需 can_manage_categories）"""
     result = await db.execute(select(Category).where(Category.id == category_id))
     category = result.scalar_one_or_none()
     if category is None:
@@ -369,10 +397,10 @@ async def update_category(
 @router.delete("/categories/{category_id}")
 async def delete_category(
     category_id: int,
-    user: User = Depends(require_role("admin")),
+    _: Permissions = Depends(require_permission("can_manage_categories")),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除分类（admin），分类下有文章则禁止"""
+    """删除分类（需 can_manage_categories），分类下有文章则禁止"""
     result = await db.execute(select(Category).where(Category.id == category_id))
     category = result.scalar_one_or_none()
     if category is None:
@@ -393,10 +421,10 @@ async def delete_category(
 @router.post("/tags")
 async def create_tag(
     payload: schemas.TagCreate,
-    user: User = Depends(require_role("admin", "author")),
+    _: Permissions = Depends(require_permission("can_manage_tags")),
     db: AsyncSession = Depends(get_db),
 ):
-    """创建标签（author+）"""
+    """创建标签（需 can_manage_tags）"""
     slug = payload.slug or payload.name.strip().lower().replace(" ", "-")
     existing = await db.execute(select(Tag).where((Tag.name == payload.name) | (Tag.slug == slug)))
     if existing.scalar_one_or_none() is not None:
@@ -412,10 +440,10 @@ async def create_tag(
 @router.delete("/tags/{tag_id}")
 async def delete_tag(
     tag_id: int,
-    user: User = Depends(require_role("admin")),
+    _: Permissions = Depends(require_permission("can_manage_tags")),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除标签（admin）"""
+    """删除标签（需 can_manage_tags）"""
     result = await db.execute(select(Tag).where(Tag.id == tag_id))
     tag = result.scalar_one_or_none()
     if tag is None:

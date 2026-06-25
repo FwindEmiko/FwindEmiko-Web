@@ -10,8 +10,13 @@ from sqlalchemy.orm import selectinload
 
 from app.core.response import success
 from app.database import get_db
-from app.modules.auth.dependencies import require_role
+from app.modules.auth.dependencies import get_current_user
 from app.modules.auth.models import User
+from app.modules.auth.permissions import (
+    Permissions,
+    get_permissions,
+    require_permission,
+)
 from app.modules.resources import schemas
 from app.modules.resources.models import Resource, ResourceVersion, Screenshot
 from app.modules.resources.schemas import dump_json_list, parse_json_list
@@ -115,10 +120,10 @@ async def get_resource(slug: str, db: AsyncSession = Depends(get_db)):
 @router.post("/resources")
 async def create_resource(
     payload: schemas.ResourceCreate,
-    user: User = Depends(require_role("admin", "author")),
+    _: Permissions = Depends(require_permission("can_create_resource")),
     db: AsyncSession = Depends(get_db),
 ):
-    """创建资源（author+）"""
+    """创建资源（需 can_create_resource）"""
     slug = await generate_unique_slug(db, payload.title)
     resource = Resource(
         title=payload.title,
@@ -146,14 +151,26 @@ async def create_resource(
 async def update_resource(
     resource_id: int,
     payload: schemas.ResourceUpdate,
-    user: User = Depends(require_role("admin", "author")),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    perms: Permissions = Depends(get_permissions),
 ):
-    """更新资源（author/admin）"""
+    """更新资源（自己的需 can_edit_own_resource，他人的需 can_edit_others_resource）
+
+    注：当前 Resource 模型无 author_id 字段，无法区分作者归属，
+    暂时统一要求 can_edit_own_resource；如需精细化区分，需为 Resource 添加 author_id。
+    """
     result = await db.execute(select(Resource).where(Resource.id == resource_id))
     resource = result.scalar_one_or_none()
     if resource is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="资源不存在")
+
+    if not perms.can("can_edit_own_resource") and not perms.can("can_edit_others_resource"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权编辑该资源")
+
+    # 状态变更检查
+    if payload.status is not None and payload.status == "published" and not perms.can("can_publish_resource"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权发布资源")
 
     if payload.title is not None:
         resource.title = payload.title
@@ -188,10 +205,10 @@ async def update_resource(
 @router.delete("/resources/{resource_id}")
 async def delete_resource(
     resource_id: int,
-    user: User = Depends(require_role("admin")),
+    _: Permissions = Depends(require_permission("can_delete_others_resource")),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除资源（admin），级联删除版本与截图"""
+    """删除资源（需 can_delete_others_resource），级联删除版本与截图"""
     result = await db.execute(select(Resource).where(Resource.id == resource_id))
     resource = result.scalar_one_or_none()
     if resource is None:
@@ -209,10 +226,10 @@ async def delete_resource(
 async def create_version(
     resource_id: int,
     payload: schemas.ResourceVersionCreate,
-    user: User = Depends(require_role("admin", "author")),
+    _: Permissions = Depends(require_permission("can_create_resource")),
     db: AsyncSession = Depends(get_db),
 ):
-    """为资源添加版本（author+）"""
+    """为资源添加版本（需 can_create_resource）"""
     result = await db.execute(select(Resource).where(Resource.id == resource_id))
     resource = result.scalar_one_or_none()
     if resource is None:
@@ -241,10 +258,10 @@ async def update_version(
     resource_id: int,
     version_id: int,
     payload: schemas.ResourceVersionUpdate,
-    user: User = Depends(require_role("admin", "author")),
+    _: Permissions = Depends(require_permission("can_edit_own_resource")),
     db: AsyncSession = Depends(get_db),
 ):
-    """更新版本（author/admin）"""
+    """更新版本（需 can_edit_own_resource）"""
     result = await db.execute(
         select(ResourceVersion).where(
             ResourceVersion.id == version_id, ResourceVersion.resource_id == resource_id
@@ -278,10 +295,10 @@ async def update_version(
 async def delete_version(
     resource_id: int,
     version_id: int,
-    user: User = Depends(require_role("admin")),
+    _: Permissions = Depends(require_permission("can_delete_others_resource")),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除版本（admin）"""
+    """删除版本（需 can_delete_others_resource）"""
     result = await db.execute(
         select(ResourceVersion).where(
             ResourceVersion.id == version_id, ResourceVersion.resource_id == resource_id
@@ -347,10 +364,10 @@ async def upload_screenshots(
     resource_id: int,
     files: list[UploadFile] = File(...),
     captions: list[str] = Query(default_factory=list),
-    user: User = Depends(require_role("admin", "author")),
+    _: Permissions = Depends(require_permission("can_create_resource")),
     db: AsyncSession = Depends(get_db),
 ):
-    """上传截图（多文件），自动生成缩略图（author+）"""
+    """上传截图（多文件），自动生成缩略图（需 can_create_resource）"""
     result = await db.execute(select(Resource).where(Resource.id == resource_id))
     resource = result.scalar_one_or_none()
     if resource is None:
@@ -385,10 +402,10 @@ async def upload_screenshots(
 async def reorder_screenshots(
     resource_id: int,
     payload: schemas.ScreenshotReorder,
-    user: User = Depends(require_role("admin", "author")),
+    _: Permissions = Depends(require_permission("can_edit_own_resource")),
     db: AsyncSession = Depends(get_db),
 ):
-    """截图排序（author+）"""
+    """截图排序（需 can_edit_own_resource）"""
     result = await db.execute(
         select(Screenshot).where(Screenshot.resource_id == resource_id)
     )
@@ -406,10 +423,10 @@ async def reorder_screenshots(
 async def delete_screenshot(
     resource_id: int,
     shot_id: int,
-    user: User = Depends(require_role("admin", "author")),
+    _: Permissions = Depends(require_permission("can_edit_own_resource")),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除截图（author/admin）"""
+    """删除截图（需 can_edit_own_resource）"""
     result = await db.execute(
         select(Screenshot).where(
             Screenshot.id == shot_id, Screenshot.resource_id == resource_id

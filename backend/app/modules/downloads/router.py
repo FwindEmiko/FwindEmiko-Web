@@ -15,8 +15,14 @@ from app.config import settings
 from app.core.response import success
 from app.core.security import decode_token
 from app.database import get_db
-from app.modules.auth.dependencies import get_current_user_optional, require_role
+from app.modules.auth.dependencies import get_current_user_optional
 from app.modules.auth.models import User
+from app.modules.auth.permissions import (
+    Permissions,
+    get_permissions_optional,
+    require_permission,
+    require_permission_optional,
+)
 from app.modules.downloads import schemas
 from app.modules.downloads.models import FileNode, Folder, FolderPermission
 from app.modules.downloads.permission import check_folder_access
@@ -172,12 +178,15 @@ async def download_file(
     token: str | None = None,
     user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
+    perms: Permissions = Depends(require_permission_optional("can_download_file")),
 ):
     """下载文件，触发计数；本地文件流式返回，外部链接 302 跳转
 
     支持两种认证方式：
     - Authorization: Bearer <token> header（axios 请求）
     - ?token=<token> query 参数（浏览器 <a href> 链接跳转，无法带 header）
+
+    权限：需 can_download_file + 文件夹级 can_download 权限
     """
     # query token 兜底：浏览器 <a> 跳转无法带 Authorization header
     if user is None and token:
@@ -187,6 +196,9 @@ async def download_file(
             u = result.scalar_one_or_none()
             if u and u.is_active:
                 user = u
+                # 重新加载该用户的权限
+                from app.modules.auth.permissions import load_role_permission
+                perms = Permissions(user, await load_role_permission(u.role, db), db)
 
     result = await db.execute(select(FileNode).where(FileNode.id == file_id))
     file_node = result.scalar_one_or_none()
@@ -247,10 +259,10 @@ async def _apply_permission_rules(
 @router.post("/downloads/folders")
 async def create_folder(
     payload: schemas.FolderCreate,
-    user: User = Depends(require_role("admin")),
+    _: Permissions = Depends(require_permission("can_manage_folders")),
     db: AsyncSession = Depends(get_db),
 ):
-    """创建文件夹（admin）"""
+    """创建文件夹（需 can_manage_folders）"""
     slug = payload.slug or payload.name.strip().lower().replace(" ", "-")
     existing = await db.execute(select(Folder).where(Folder.slug == slug))
     if existing.scalar_one_or_none() is not None:
@@ -279,10 +291,10 @@ async def create_folder(
 async def update_folder(
     folder_id: int,
     payload: schemas.FolderUpdate,
-    user: User = Depends(require_role("admin")),
+    _: Permissions = Depends(require_permission("can_manage_folders")),
     db: AsyncSession = Depends(get_db),
 ):
-    """更新文件夹（admin）"""
+    """更新文件夹（需 can_manage_folders）"""
     result = await db.execute(select(Folder).where(Folder.id == folder_id))
     folder = result.scalar_one_or_none()
     if folder is None:
@@ -316,10 +328,10 @@ async def update_folder(
 @router.delete("/downloads/folders/{folder_id}")
 async def delete_folder(
     folder_id: int,
-    user: User = Depends(require_role("admin")),
+    _: Permissions = Depends(require_permission("can_manage_folders")),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除文件夹（admin），非空禁止删除"""
+    """删除文件夹（需 can_manage_folders），非空禁止删除"""
     folder = await db.get(Folder, folder_id)
     if folder is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文件夹不存在")
@@ -345,10 +357,10 @@ async def delete_folder(
 async def upload_files(
     folder_id: int = Query(...),
     files: list[UploadFile] = File(...),
-    user: User = Depends(require_role("admin", "author", "member")),
+    _: Permissions = Depends(require_permission("can_upload_file")),
     db: AsyncSession = Depends(get_db),
 ):
-    """上传文件到指定文件夹（需 can_upload 权限）"""
+    """上传文件到指定文件夹（需 can_upload_file + 文件夹级 can_upload 权限）"""
     folder = await db.get(Folder, folder_id)
     if folder is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文件夹不存在")
@@ -391,10 +403,14 @@ async def upload_files(
 @router.delete("/downloads/files/{file_id}")
 async def delete_file(
     file_id: int,
-    user: User = Depends(require_role("admin", "author", "member")),
+    user: User = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
+    perms: Permissions = Depends(get_permissions_optional),
 ):
-    """删除文件（需 can_delete 权限），同时删除物理文件"""
+    """删除文件（需 can_delete_file + 文件夹级 can_delete 权限），同时删除物理文件"""
+    # 先检查全局 can_delete_file 权限
+    if not perms.can("can_delete_file"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权删除文件")
     result = await db.execute(select(FileNode).where(FileNode.id == file_id))
     file_node = result.scalar_one_or_none()
     if file_node is None:
@@ -419,10 +435,10 @@ ALL_ROLES = ["admin", "author", "member", "guest"]
 
 @router.get("/admin/permissions/folders")
 async def get_permission_matrix(
-    user: User = Depends(require_role("admin")),
+    _: Permissions = Depends(require_permission("can_manage_folders")),
     db: AsyncSession = Depends(get_db),
 ):
-    """返回所有文件夹 + 各角色权限矩阵"""
+    """返回所有文件夹 + 各角色权限矩阵（需 can_manage_folders）"""
     folders_result = await db.execute(select(Folder).order_by(Folder.id))
     folders = list(folders_result.scalars().all())
 
@@ -492,10 +508,10 @@ async def get_permission_matrix(
 @router.put("/admin/permissions")
 async def update_permission_matrix(
     payload: schemas.PermissionBatchUpdate,
-    user: User = Depends(require_role("admin")),
+    _: Permissions = Depends(require_permission("can_manage_folders")),
     db: AsyncSession = Depends(get_db),
 ):
-    """批量更新文件夹权限矩阵
+    """批量更新文件夹权限矩阵（需 can_manage_folders）
 
     对每个 (folder_id, role) 组合执行 upsert：
     - 存在则更新

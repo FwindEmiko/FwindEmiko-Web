@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     APP_NAME: str = "WindEmiko Portal"
     DEBUG: bool = True
 
+    # 注册默认角色（在 .env 中配置，影响通过 /auth/register 接口新建用户的角色）
+    # 可选值：member / author / moderator（admin 不能通过注册接口创建）
+    REGISTER_DEFAULT_ROLE: str = "member"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
