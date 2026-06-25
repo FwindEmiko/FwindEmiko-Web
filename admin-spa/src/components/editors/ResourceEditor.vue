@@ -822,7 +822,6 @@ watch(() => props.resourceId, (id, oldId) => {
     <div class="flex gap-3 sticky bottom-0 backdrop-blur-xl py-3 z-10 mt-4 px-4 -mx-4 border-t border-[var(--border)]" style="background: var(--panel);">
       <el-button :loading="saving" @click="submit('draft')">存草稿</el-button>
       <el-button :loading="saving" type="primary" @click="submit('published')">发布</el-button>
-      <el-button text @click="saveDraft">保存本地草稿</el-button>
       <span class="text-xs text-[var(--text-secondary)] self-center ml-auto">快捷键：Ctrl+S 保存草稿，Ctrl+Enter 发布，Esc 关闭弹窗</span>
     </div>
 
