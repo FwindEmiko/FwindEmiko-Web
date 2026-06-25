@@ -195,6 +195,7 @@ async def list_tags(db: AsyncSession = Depends(get_db)):
 @router.post("/posts")
 async def create_post(
     payload: schemas.PostCreate,
+    user: User = Depends(get_current_user),
     perms: Permissions = Depends(require_permission("can_create_post")),
     db: AsyncSession = Depends(get_db),
 ):

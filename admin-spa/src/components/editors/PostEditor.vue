@@ -200,7 +200,9 @@ async function initVditor() {
   const cdnBase = import.meta.env.BASE_URL + 'vditor'
   await preloadVditorIcons(cdnBase)
   vditorInstance = new Vditor(editorId, {
-    mode: 'wysiwyg',
+    // ir 即时渲染模式：编辑和预览并排，不需要 wysiwyg 模式的 customWysiwygToolbar 回调
+    // 避免 Vditor 3.11.x 的 "customWysiwygToolbar is not a function" 错误
+    mode: 'ir',
     height: 700,
     placeholder: '开始写作...',
     value: form.content,
@@ -220,7 +222,7 @@ async function initVditor() {
       '|',
       'list',
       'ordered-list',
-      'check',
+      'checklist',
       '|',
       'upload',
       'table',
